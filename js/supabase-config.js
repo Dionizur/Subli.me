@@ -19,7 +19,7 @@ const SUPABASE_CONFIG = {
   url: 'https://zfhyxjwamuxrfcwjeaia.supabase.co',
 
   // 👇 COLE AQUI a "anon public key" (NÃO a service_role!)
-  anonKey: '',  // <-- COLE A ANON KEY AQUI!
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmaHl4andhbXV4cmZjd2plYWlhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDkzNDQyOCwiZXhwIjoyMTAwNTEwNDI4fQ.WD8V___GWjpo0U9vZPGzsa3wORlyorus_voR09v21k4',  // <-- COLE A ANON KEY AQUI!
 
   // Nomes das tabelas no banco de dados
   tables: {
