@@ -172,6 +172,72 @@ async function removeProduct(id) {
 // ===== ADMIN / AUTENTICAÇÃO =====
 
 /**
+ * Testa a conexão e as tabelas do Supabase.
+ * Útil para diagnóstico quando algo não funciona.
+ * Chame no console: await testSupabaseConnection()
+ */
+async function testSupabaseConnection() {
+  console.log('========================================');
+  console.log('🔍 DIAGNÓSTICO SUPABASE');
+  console.log('========================================');
+
+  // 1. Verifica se o cliente existe
+  try {
+    const client = getClient();
+    console.log('✅ Cliente Supabase inicializado');
+  } catch (err) {
+    console.error('❌ Cliente Supabase NÃO inicializado:', err.message);
+    console.error('   → initSupabase() falhou. Verifique a anonKey.');
+    return;
+  }
+
+  const client = getClient();
+
+  // 2. Testa a tabela admins
+  console.log('\n📋 Testando tabela "admins"...');
+  try {
+    const { data, error } = await client.from('admins').select('*');
+    if (error) {
+      console.error('❌ Erro ao consultar admins:', error.message);
+      console.error('   → Código:', error.code);
+      console.error('   → Detalhes:', error.details);
+      console.error('   ⚠️ Execute o arquivo supabase-schema.sql no SQL Editor do Supabase!');
+    } else {
+      console.log(`✅ Tabela "admins" existe! ${data.length} registro(s) encontrado(s):`);
+      data.forEach(a => console.log(`   - Email: "${a.email}", Nome: "${a.nome}", Hash: "${a.senha_hash}"`));
+    }
+  } catch (err) {
+    console.error('❌ Exceção ao consultar admins:', err.message);
+    console.error('   ⚠️ A tabela "admins" pode não existir. Execute o schema SQL!');
+  }
+
+  // 3. Testa a tabela products
+  console.log('\n📋 Testando tabela "products"...');
+  try {
+    const { data, error } = await client.from('products').select('*').limit(3);
+    if (error) {
+      console.error('❌ Erro ao consultar products:', error.message);
+      console.error('   → Código:', error.code);
+      console.error('   ⚠️ Execute o arquivo supabase-schema.sql no SQL Editor do Supabase!');
+    } else {
+      console.log(`✅ Tabela "products" existe! ${data.length} registro(s) encontrado(s).`);
+    }
+  } catch (err) {
+    console.error('❌ Exceção ao consultar products:', err.message);
+    console.error('   ⚠️ A tabela "products" pode não existir. Execute o schema SQL!');
+  }
+
+  console.log('\n========================================');
+  console.log('📌 Se viu erros acima, siga estes passos:');
+  console.log('   1. Acesse: https://supabase.com/dashboard/project/zfhyxjwamuxrfcwjeaia');
+  console.log('   2. Vá em SQL Editor > New Query');
+  console.log('   3. Cole TODO o conteúdo do arquivo supabase-schema.sql');
+  console.log('   4. Execute (CTRL+ENTER ou clicar em "Run")');
+  console.log('   5. Recarregue o site (F5)');
+  console.log('========================================');
+}
+
+/**
  * Autentica um administrador.
  * @param {string} email - Email ou usuário do admin
  * @param {string} password - Senha em texto puro
@@ -181,7 +247,7 @@ async function authenticateAdmin(email, password) {
   try {
     const client = getClient();
 
-    console.log('🔍 Buscando admin:', email);
+    console.log('🔍 Buscando admin:', `"${email}"`);
 
     const { data, error } = await client
       .from('admins')
@@ -190,14 +256,19 @@ async function authenticateAdmin(email, password) {
       .maybeSingle();
 
     if (error) {
-      console.error('❌ Erro SQL ao buscar admin:', error.message, error);
+      console.error('❌ Erro SQL ao buscar admin:', error.message);
+      console.error('   Código:', error.code);
+      console.error('   Detalhes:', error.details);
+      console.error('   ⚠️ A tabela "admins" pode não existir!');
+      console.error('   → Execute o arquivo supabase-schema.sql no SQL Editor do Supabase');
       return null;
     }
 
     if (!data) {
-      console.warn('⚠️ Admin não encontrado no banco:', email);
+      console.warn(`⚠️ Admin "${email}" não encontrado no banco.`);
       console.warn('   → Verifique se o SQL foi executado no Supabase SQL Editor');
-      console.warn('   → Verifique se a tabela "admins" existe e tem o registro');
+      console.warn('   → O admin padrão é: email="teste", senha="123456"');
+      console.warn('   → Comando SQL: INSERT INTO admins (email, senha_hash, nome) VALUES (\'teste\', \'MTIzNDU2\', \'Admin Teste\');');
       return null;
     }
 
@@ -205,8 +276,8 @@ async function authenticateAdmin(email, password) {
 
     // Verifica senha com hash base64 (compatível com o schema existente)
     const hash = btoa(unescape(encodeURIComponent(password)));
-    console.log('   Hash esperado:', data.senha_hash);
-    console.log('   Hash gerado: ', hash);
+    console.log('   Hash esperado (no banco):', data.senha_hash);
+    console.log('   Hash gerado (da senha): ', hash);
 
     if (hash === data.senha_hash) {
       console.log('✅ Senha correta!');
@@ -214,9 +285,12 @@ async function authenticateAdmin(email, password) {
     }
 
     console.warn('⚠️ Senha incorreta para:', email);
+    console.warn('   → O hash gerado da senha fornecida não bate com o hash no banco.');
+    console.warn('   → Verifique se a senha está correta.');
     return null;
   } catch (err) {
-    console.error('❌ Erro na autenticação:', err);
+    console.error('❌ Erro na autenticação (exceção):', err.message);
+    console.error('   ⚠️ Pode ser problema de conexão com o Supabase.');
     return null;
   }
 }

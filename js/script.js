@@ -293,7 +293,28 @@ adminLoginBtn?.addEventListener('click', async () => {
       renderAdminProducts();
       showToast(`👋 Bem-vindo, ${user.nome || user.email}!`, 'success');
     } else {
-      adminLoginError.textContent = '❌ Usuário ou senha incorretos!';
+      // Tenta fazer um diagnóstico extra quando falha
+      try {
+        const client = getClient();
+        const { data: allAdmins, error: allError } = await client.from('admins').select('*');
+        console.log('🔍 DIAGNÓSTICO: Todos os admins no banco:', allAdmins);
+        if (allError) {
+          console.error('🔍 ERRO ao buscar admins:', allError.message, 'Código:', allError.code);
+          adminLoginError.innerHTML = `❌ Erro no banco: ${allError.message}<br><small style="font-size:0.75rem;">Código: ${allError.code || 'N/A'}</small>`;
+        } else if (!allAdmins || allAdmins.length === 0) {
+          adminLoginError.innerHTML = '❌ Tabela "admins" está VAZIA!<br><small>Execute o SQL do supabase-schema.sql novamente</small>';
+        } else {
+          const found = allAdmins.find(a => a.email === email);
+          if (!found) {
+            adminLoginError.innerHTML = `❌ Admin "${email}" não encontrado!<br><small>Admins disponíveis: ${allAdmins.map(a => `"${a.email}"`).join(', ')}</small>`;
+          } else {
+            const hash = btoa(unescape(encodeURIComponent(password)));
+            adminLoginError.innerHTML = `❌ Senha incorreta para "${email}"<br><small>Hash esperado: ${found.senha_hash} | Seu hash: ${hash}</small>`;
+          }
+        }
+      } catch (diagErr) {
+        adminLoginError.innerHTML = `❌ ${diagErr.message}`;
+      }
       adminLoginError.style.display = 'block';
       adminPasswordInput.value = '';
       adminPasswordInput.focus();
@@ -494,6 +515,64 @@ $('.whatsapp-float')?.addEventListener('click', () => {
   window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
 });
 
+// ===== DIAGNÓSTICO AUTOMÁTICO (ADMIN LOGIN) =====
+// Toda vez que tentar logar, mostra diagnóstico completo no console
+async function runLoginDiagnostic() {
+  console.log('%c🔍 DIAGNÓSTICO DE LOGIN', 'font-size:16px;font-weight:bold');
+  console.log('========================================');
+  
+  // 1. Verifica conexão
+  try {
+    const client = getClient();
+    console.log('✅ Cliente Supabase conectado');
+  } catch (err) {
+    console.error('❌ Cliente Supabase NÃO conectado');
+    return;
+  }
+
+  // 2. Tenta buscar admins
+  try {
+    const client = getClient();
+    const { data, error } = await client.from('admins').select('email, senha_hash, nome');
+    
+    if (error) {
+      console.error('❌ ERRO na tabela admins:', error.message);
+      console.error('   ⚠️ Você PRECISA executar o supabase-schema.sql no SQL Editor!');
+      return;
+    }
+    
+    console.log(`✅ Tabela "admins" existe! ${data.length} registro(s):`);
+    data.forEach(a => {
+      console.log(`   👤 Email: "${a.email}" | Senha hash: "${a.senha_hash}" | Nome: "${a.nome}"`);
+    });
+    
+    // Verifica se o admin "teste" existe
+    const adminTeste = data.find(a => a.email === 'teste');
+    if (adminTeste) {
+      console.log('✅ Admin "teste" ENCONTRADO!');
+      console.log('   → Hash da senha 123456 = MTIzNDU2');
+      console.log('   → Hash no banco:', adminTeste.senha_hash);
+      if (adminTeste.senha_hash === 'MTIzNDU2') {
+        console.log('✅ Hash CONFERE! Login deve funcionar!');
+      } else {
+        console.error('❌ Hash DIFERENTE! O hash no banco não é MTIzNDU2');
+      }
+    } else {
+      console.error('❌ Admin "teste" NÃO encontrado!');
+      console.error('   → Execute este SQL no SQL Editor:');
+      console.error("   INSERT INTO admins (email, senha_hash, nome) VALUES ('teste', 'MTIzNDU2', 'Admin Teste');");
+    }
+  } catch (err) {
+    console.error('❌ Erro ao consultar banco:', err.message);
+  }
+  
+  console.log('========================================');
+  console.log('📌 Acesse: https://supabase.com/dashboard/project/zfhyxjwamuxrfcwjeaia');
+  console.log('   → SQL Editor → New Query');
+  console.log('   → Cole o conteúdo de supabase-schema.sql');
+  console.log('   → Clique em Run');
+}
+
 // ===== INIT =====
 async function init() {
   const connected = initSupabase();
@@ -501,6 +580,10 @@ async function init() {
   if (connected) {
     await loadProducts();
     showToast('✅ Conectado ao banco de dados Supabase!', 'success');
+    
+    // Auto-diagnóstico: verifica se as tabelas existem
+    console.log('%c🔧 Diagnóstico automático...', 'font-weight:bold');
+    setTimeout(() => runLoginDiagnostic(), 1000);
   } else {
     showToast('⚠️ Configure o Supabase em js/supabase-config.js', 'warning');
   }
