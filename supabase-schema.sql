@@ -54,20 +54,23 @@ ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
 
 -- Remove políticas antigas (se houver) para evitar conflito
 DROP POLICY IF EXISTS "Produtos visíveis para todos" ON products;
-DROP POLICY IF EXISTS "Admins invisível para anon" ON admins;
+DROP POLICY IF EXISTS "Admins visível para autenticação" ON admins;
+DROP POLICY IF EXISTS "Produtos inseríveis por anon" ON products;
+DROP POLICY IF EXISTS "Produtos atualizáveis por anon" ON products;
 
 -- Produtos: qualquer um pode ler (anon)
 CREATE POLICY "Produtos visíveis para todos"
 ON products FOR SELECT USING (true);
 
--- Produtos: apenas autenticados podem inserir/atualizar/deletar
-CREATE POLICY "Produtos inseríveis por autenticados"
+-- Produtos: qualquer um pode inserir/atualizar (via anon key)
+CREATE POLICY "Produtos inseríveis por anon"
 ON products FOR INSERT WITH CHECK (true);
 
-CREATE POLICY "Produtos atualizáveis por autenticados"
+CREATE POLICY "Produtos atualizáveis por anon"
 ON products FOR UPDATE USING (true);
 
--- Admins: ninguém pode ler a tabela de admins pela API pública
-CREATE POLICY "Admins invisível para anon"
-ON admins FOR SELECT USING (false);
+-- Admins: permitir SELECT para autenticação via anon key
+-- A senha é armazenada como hash base64 (mesmo modelo de segurança do admin.json antigo)
+CREATE POLICY "Admins visível para autenticação"
+ON admins FOR SELECT USING (true);
 

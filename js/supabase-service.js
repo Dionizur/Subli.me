@@ -128,23 +128,40 @@ async function removeProduct(id) {
 async function authenticateAdmin(email, password) {
   try {
     const client = getClient();
+
+    console.log('🔍 Buscando admin:', email);
+
     const { data, error } = await client
       .from('admins')
       .select('email, senha_hash, nome')
       .eq('email', email)
       .maybeSingle();
 
-    if (error || !data) {
-      console.warn('⚠️ Admin não encontrado:', email);
+    if (error) {
+      console.error('❌ Erro SQL ao buscar admin:', error.message, error);
       return null;
     }
 
+    if (!data) {
+      console.warn('⚠️ Admin não encontrado no banco:', email);
+      console.warn('   → Verifique se o SQL foi executado no Supabase SQL Editor');
+      console.warn('   → Verifique se a tabela "admins" existe e tem o registro');
+      return null;
+    }
+
+    console.log('✅ Admin encontrado no banco:', data.email);
+
     // Verifica senha com hash base64 (compatível com o schema existente)
     const hash = btoa(unescape(encodeURIComponent(password)));
+    console.log('   Hash esperado:', data.senha_hash);
+    console.log('   Hash gerado: ', hash);
+
     if (hash === data.senha_hash) {
+      console.log('✅ Senha correta!');
       return { email: data.email, nome: data.nome || 'Admin' };
     }
 
+    console.warn('⚠️ Senha incorreta para:', email);
     return null;
   } catch (err) {
     console.error('❌ Erro na autenticação:', err);
