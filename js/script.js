@@ -1,64 +1,88 @@
-// ===== CONFIG =====
-const WHATSAPP_NUMBER = '5541988259550';
-const PLACEHOLDER_IMG = 'images/placeholder.svg';
+// ========================================================
+// SUBLI.ME — JavaScript Principal
+// ========================================================
+// Depende de: supabase-config.js, supabase-service.js
+// NÃO usa mais arquivos JSON locais — tudo via Supabase.
+// ========================================================
 
-// ===== PRODUCTS (com múltiplas imagens) =====
-const PRODUCTS_DATA = [
-  { "id": 1, "nome": "Camiseta Street Art", "imagens": ["images/camiseta1.svg", "images/placeholder.svg"], "descricao": "Camiseta oversized com estampa artística exclusiva. Produzida em algodão premium 30.1, costura reforçada e acabamento de alta qualidade.", "preco": 79.90, "tamanhos": ["PP", "P", "M", "G", "GG"], "categoria": "Masculina" },
-  { "id": 2, "nome": "Camiseta Minimalista", "imagens": ["images/camiseta2.svg", "images/placeholder.svg"], "descricao": "Camiseta básica de corte reto com design minimalista. Tecido leve e confortável, perfeita para o dia a dia.", "preco": 69.90, "tamanhos": ["P", "M", "G", "GG"], "categoria": "Feminina" },
-  { "id": 3, "nome": "Camiseta Vintage", "imagens": ["images/camiseta3.svg", "images/placeholder.svg"], "descricao": "Camiseta com estampa inspirada nos anos 80/90. Modelo casual com gola careca e mangas curtas.", "preco": 89.90, "tamanhos": ["P", "M", "G", "GG", "XGG"], "categoria": "Unissex" },
-  { "id": 4, "nome": "Camiseta Geométrica", "imagens": ["images/camiseta4.svg", "images/placeholder.svg"], "descricao": "Camiseta estilosa com padrão geométrico moderno. Confortável e respirável.", "preco": 74.90, "tamanhos": ["PP", "P", "M", "G"], "categoria": "Masculina" },
-  { "id": 5, "nome": "Camiseta Floral", "imagens": ["images/camiseta5.svg", "images/placeholder.svg"], "descricao": "Camiseta com estampa floral delicada. Modelo ajustado ao corpo, decote redondo.", "preco": 79.90, "tamanhos": ["P", "M", "G", "GG"], "categoria": "Feminina" },
-  { "id": 6, "nome": "Camiseta Esportiva", "imagens": ["images/camiseta6.svg", "images/placeholder.svg"], "descricao": "Camiseta dry-fit para atividades esportivas. Leve, respirável e com proteção UV.", "preco": 94.90, "tamanhos": ["P", "M", "G", "GG", "XGG"], "categoria": "Unissex" }
-];
+// ===== CONFIGURAÇÕES =====
+const CONFIG = {
+  whatsapp: '5541988259550',
+  placeholder: 'images/placeholder.svg',
+  storageKey: 'sublime_session'
+};
 
 // ===== STATE =====
 let products = [];
 let isLoggedIn = false;
-let uploadedImages = {}; // filename -> dataURL
-let modalImages = [];   // current modal gallery images
-let modalImageIndex = 0;
+let sessionUser = null;
+
+// ===== DOM HELPERS =====
+const $ = (s, p = document) => p.querySelector(s);
+const $$ = (s, p = document) => [...p.querySelectorAll(s)];
 
 // ===== DOM REFS =====
-const sections = document.querySelectorAll('.section');
-const navLinks = document.querySelectorAll('.nav-links a');
-const hamburger = document.querySelector('.hamburger');
-const navLinksContainer = document.querySelector('.nav-links');
-const productsGrid = document.querySelector('.products-grid');
-const modalOverlay = document.querySelector('.modal-overlay');
-const modalContent = document.querySelector('.modal-content');
-const modalClose = document.querySelector('.modal-close');
+const sections = $$('.section');
+const navLinks = $$('.nav-links a');
+const hamburger = $('.hamburger');
+const navLinksContainer = $('.nav-links');
+const productsGrid = $('.products-grid');
+const modalOverlay = $('.modal-overlay');
+const modalContent = $('.modal-content');
+const modalClose = $('.modal-close');
 
-// Admin DOM
-const adminLoginDiv = document.querySelector('.admin-login');
-const adminPanel = document.querySelector('.admin-panel');
-const adminEmailInput = document.getElementById('admin-email');
-const adminPasswordInput = document.getElementById('admin-password');
-const adminLoginBtn = document.getElementById('admin-login-btn');
-const adminLoginError = document.getElementById('admin-login-error');
-const adminEmailDisplay = document.getElementById('admin-email-display');
-const adminLogoutBtn = document.getElementById('admin-logout-btn');
-const adminForm = document.getElementById('admin-form');
-const adminProductsList = document.querySelector('.admin-products-list .products-list');
-const downloadJsonBtn = document.getElementById('download-json-btn');
-const jsonSaveMsg = document.getElementById('json-save-msg');
-const fileInputs = document.querySelectorAll('.prod-imagem-file');
-const previewContainer = document.getElementById('previews-container');
+const adminLoginDiv = $('.admin-login');
+const adminPanel = $('.admin-panel');
+const adminEmailInput = $('#admin-email');
+const adminPasswordInput = $('#admin-password');
+const adminLoginBtn = $('#admin-login-btn');
+const adminLoginError = $('#admin-login-error');
+const adminEmailDisplay = $('#admin-email-display');
+const adminLogoutBtn = $('#admin-logout-btn');
+const adminForm = $('#admin-form');
+const adminProductsList = $('.admin-products-list .products-list');
 
-// ===== HELPERS =====
-function getImageSrc(path) {
-  // If the path is already a dataURL, use it directly
-  if (path && path.startsWith('data:')) return path;
-  if (uploadedImages[path]) return uploadedImages[path];
-  return path;
+// ===== TOAST SYSTEM =====
+function showToast(msg, type = 'info') {
+  const existing = $('.toast');
+  if (existing) existing.remove();
+
+  const colors = {
+    success: '#27ae60',
+    error: '#e74c3c',
+    warning: '#f39c12',
+    info: '#433075'
+  };
+
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = msg;
+  toast.style.cssText = `
+    position: fixed; top: 90px; right: 24px; z-index: 9999;
+    background: ${colors[type] || colors.info}; color: #fff;
+    padding: 14px 24px; border-radius: 10px; font-weight: 600;
+    font-size: 0.95rem; box-shadow: 0 6px 25px rgba(0,0,0,0.2);
+    animation: slideInRight 0.3s ease; max-width: 400px;
+    line-height: 1.4;
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(100px)';
+    toast.style.transition = 'all 0.3s ease';
+    setTimeout(() => toast.remove(), 400);
+  }, 4000);
 }
 
-/** Return product's images array (backward compat with 'imagem' field) */
-function getProductImages(p) {
-  if (p.imagens && Array.isArray(p.imagens) && p.imagens.length > 0) return p.imagens;
-  if (p.imagem) return [p.imagem];
-  return [PLACEHOLDER_IMG];
-}
+// Add keyframe for toast animation
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes slideInRight {
+    from { transform: translateX(100px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+`;
+document.head.appendChild(style);
 
 // ===== NAVIGATION =====
 function navigateTo(sectionId) {
@@ -66,7 +90,7 @@ function navigateTo(sectionId) {
   navLinks.forEach(l => l.classList.remove('active'));
   const target = document.getElementById(sectionId);
   if (target) target.classList.add('active');
-  const link = document.querySelector(`.nav-links a[data-section="${sectionId}"]`);
+  const link = $(`.nav-links a[data-section="${sectionId}"]`);
   if (link) link.classList.add('active');
   navLinksContainer.classList.remove('open');
   hamburger.classList.remove('active');
@@ -80,163 +104,153 @@ function navigateTo(sectionId) {
 }
 
 navLinks.forEach(link => {
-  link.addEventListener('click', (e) => { e.preventDefault(); navigateTo(link.dataset.section); });
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    navigateTo(link.dataset.section);
+  });
 });
+
 hamburger.addEventListener('click', () => {
   hamburger.classList.toggle('active');
   navLinksContainer.classList.toggle('open');
 });
 
-// ===== LOCAL STORAGE PERSISTENCE =====
-const STORAGE_KEY = 'sublime_products';
-
-function saveProductsToStorage() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
-  } catch (err) {
-    console.warn('Erro ao salvar no localStorage:', err);
-  }
+// ===== IMAGE HELPERS =====
+function getImageSrc(path) {
+  if (!path || path === '') return CONFIG.placeholder;
+  return path;
 }
 
-function loadProductsFromStorage() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-  } catch (err) {
-    console.warn('Erro ao carregar do localStorage:', err);
-  }
-  return null;
+function getProductImages(p) {
+  return p.imagens && Array.isArray(p.imagens) && p.imagens.length > 0
+    ? p.imagens
+    : [CONFIG.placeholder];
 }
 
 // ===== LOAD PRODUCTS =====
-function loadProducts() {
-  const stored = loadProductsFromStorage();
-  if (stored) {
-    products = stored;
+async function loadProducts() {
+  showToast('🔄 Carregando produtos...', 'info');
+
+  const data = await fetchProducts();
+  if (data && data.length > 0) {
+    products = data;
+    showToast(`✅ ${products.length} produto(s) carregados!`, 'success');
   } else {
-    products = PRODUCTS_DATA.map(p => ({ ...p }));
-    saveProductsToStorage();
+    products = [];
+    showToast('📭 Nenhum produto encontrado no banco.', 'warning');
   }
+
   renderProducts();
   renderAdminProducts();
 }
 
-// ===== RENDER PRODUCT GRID =====
+// ===== RENDER PRODUCTS =====
 function renderProducts() {
   if (!productsGrid) return;
   if (products.length === 0) {
-    productsGrid.innerHTML = '<p style="text-align:center;color:#999;grid-column:1/-1;">Nenhum produto disponível no momento.</p>';
+    productsGrid.innerHTML = `<div style="text-align:center;color:#999;grid-column:1/-1;padding:60px 0;">
+      <p style="font-size:3rem;margin-bottom:16px;">👕</p>
+      <p>Nenhum produto disponível no momento.</p>
+      <p style="font-size:0.85rem;margin-top:8px;color:#bbb;">Volte em breve ou entre em contato pelo WhatsApp!</p>
+    </div>`;
     return;
   }
   productsGrid.innerHTML = products.map(p => {
     const firstImg = getImageSrc(getProductImages(p)[0]);
     return `<div class="product-card" data-id="${p.id}">
-      <img src="${firstImg}" alt="${p.nome}" loading="lazy" onerror="this.src='${PLACEHOLDER_IMG}'">
+      <img src="${firstImg}" alt="${p.nome}" loading="lazy" onerror="this.src='${CONFIG.placeholder}'">
       <div class="product-info">
-        <div class="categoria">${p.categoria}</div>
+        <div class="categoria">${p.categoria || 'Geral'}</div>
         <h3>${p.nome}</h3>
-        <div class="preco">R$ ${p.preco.toFixed(2)}</div>
-        <div class="tamanhos-mini">${p.tamanhos.map(t => `<span>${t}</span>`).join('')}</div>
+        <div class="preco">R$ ${parseFloat(p.preco).toFixed(2)}</div>
+        <div class="tamanhos-mini">${(p.tamanhos || []).map(t => `<span>${t}</span>`).join('')}</div>
       </div>
     </div>`;
   }).join('');
-  document.querySelectorAll('.product-card').forEach(card => {
+
+  $$('.product-card').forEach(card => {
     card.addEventListener('click', () => {
-      const id = parseInt(card.dataset.id);
+      const id = card.dataset.id;
       const product = products.find(p => p.id === id);
       if (product) openModal(product);
     });
   });
 }
 
-// ===== MODAL WITH GALLERY =====
+// ===== MODAL =====
 function openModal(product) {
   if (!modalOverlay || !modalContent) return;
 
-  modalImages = getProductImages(product);
-  modalImageIndex = 0;
+  const imgs = getProductImages(product);
+  let modalImageIndex = 0;
 
-  renderModalImage(product);
+  function renderModalImage() {
+    const imgSrc = getImageSrc(imgs[modalImageIndex]);
+    const hasMultiple = imgs.length > 1;
 
-  modalOverlay.classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-
-function renderModalImage(product) {
-  const imgSrc = getImageSrc(modalImages[modalImageIndex]);
-  const hasMultiple = modalImages.length > 1;
-
-  let galleryHtml = `<div class="modal-image">`;
-  galleryHtml += `<div class="gallery-container">`;
-  galleryHtml += `<img src="${imgSrc}" alt="${product.nome}" class="gallery-main-img" onerror="this.src='${PLACEHOLDER_IMG}'">`;
-
-  if (hasMultiple) {
-    galleryHtml += `<button class="gallery-nav gallery-prev" id="gallery-prev">‹</button>`;
-    galleryHtml += `<button class="gallery-nav gallery-next" id="gallery-next">›</button>`;
-    galleryHtml += `<div class="gallery-dots">`;
-    for (let i = 0; i < modalImages.length; i++) {
-      galleryHtml += `<span class="gallery-dot ${i === modalImageIndex ? 'active' : ''}" data-index="${i}"></span>`;
+    let html = `<div class="modal-image"><div class="gallery-container">
+      <img src="${imgSrc}" alt="${product.nome}" class="gallery-main-img" onerror="this.src='${CONFIG.placeholder}'">`;
+    if (hasMultiple) {
+      html += `<button class="gallery-nav gallery-prev" data-action="prev">‹</button>
+        <button class="gallery-nav gallery-next" data-action="next">›</button>
+        <div class="gallery-dots">${imgs.map((_, i) =>
+          `<span class="gallery-dot ${i === modalImageIndex ? 'active' : ''}" data-index="${i}"></span>`
+        ).join('')}</div>`;
     }
-    galleryHtml += `</div>`;
-  }
-  galleryHtml += `</div></div>`;
+    html += `</div></div>
+      <div class="modal-details">
+        <div class="categoria">${product.categoria || 'Geral'}</div>
+        <h2>${product.nome}</h2>
+        <div class="preco-modal">R$ ${parseFloat(product.preco).toFixed(2)}</div>
+        <p class="descricao">${product.descricao || ''}</p>
+        <div class="tamanhos-title">Tamanhos disponíveis:</div>
+        <div class="tamanhos-list">${(product.tamanhos || []).map(t =>
+          `<span class="tamanho-item" data-tam="${t}">${t}</span>`
+        ).join('')}</div>
+        <button class="btn btn-whatsapp" id="modal-whatsapp-btn">📱 Encomendar via WhatsApp</button>
+      </div>`;
 
-  const detalhesHtml = `<div class="modal-details">
-    <div class="categoria">${product.categoria}</div>
-    <h2>${product.nome}</h2>
-    <div class="preco-modal">R$ ${product.preco.toFixed(2)}</div>
-    <p class="descricao">${product.descricao}</p>
-    <div class="tamanhos-title">Tamanhos disponíveis:</div>
-    <div class="tamanhos-list">
-      ${product.tamanhos.map(t => `<span class="tamanho-item" data-tam="${t}">${t}</span>`).join('')}
-    </div>
-    <button class="btn btn-whatsapp" id="modal-whatsapp-btn">📱 Encomendar via WhatsApp</button>
-  </div>`;
+    modalContent.innerHTML = html;
 
-  modalContent.innerHTML = galleryHtml + detalhesHtml;
-
-  // Gallery navigation
-  if (hasMultiple) {
-    document.getElementById('gallery-prev')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      modalImageIndex = (modalImageIndex - 1 + modalImages.length) % modalImages.length;
-      renderModalImage(product);
-    });
-    document.getElementById('gallery-next')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      modalImageIndex = (modalImageIndex + 1) % modalImages.length;
-      renderModalImage(product);
-    });
-    document.querySelectorAll('.gallery-dot').forEach(dot => {
-      dot.addEventListener('click', (e) => {
+    if (hasMultiple) {
+      $('[data-action="prev"]')?.addEventListener('click', (e) => {
         e.stopPropagation();
-        modalImageIndex = parseInt(dot.dataset.index);
-        renderModalImage(product);
+        modalImageIndex = (modalImageIndex - 1 + imgs.length) % imgs.length;
+        renderModalImage();
+      });
+      $('[data-action="next"]')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        modalImageIndex = (modalImageIndex + 1) % imgs.length;
+        renderModalImage();
+      });
+      $$('.gallery-dot').forEach(dot => {
+        dot.addEventListener('click', (e) => {
+          e.stopPropagation();
+          modalImageIndex = parseInt(dot.dataset.index);
+          renderModalImage();
+        });
+      });
+    }
+
+    let selectedSize = null;
+    $$('.tamanho-item').forEach(el => {
+      el.addEventListener('click', () => {
+        $$('.tamanho-item').forEach(e => e.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedSize = el.dataset.tam;
       });
     });
+
+    $('#modal-whatsapp-btn')?.addEventListener('click', () => {
+      const sizeText = selectedSize ? `Tam: ${selectedSize}` : 'Tam: a confirmar';
+      const msg = `Olá! Tenho interesse na *${product.nome}*\n💵 R$ ${parseFloat(product.preco).toFixed(2)}\n📏 ${sizeText}`;
+      window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+    });
   }
 
-  // Size selection
-  let selectedSize = null;
-  document.querySelectorAll('.tamanho-item').forEach(el => {
-    el.addEventListener('click', () => {
-      document.querySelectorAll('.tamanho-item').forEach(e => e.classList.remove('selected'));
-      el.classList.add('selected');
-      selectedSize = el.dataset.tam;
-    });
-  });
-
-  // WhatsApp
-  document.getElementById('modal-whatsapp-btn')?.addEventListener('click', () => {
-    const sizeText = selectedSize ? `Tam: ${selectedSize}` : 'Tam: a confirmar';
-    const msg = `Olá! Tenho interesse na *${product.nome}*\n💵 R$ ${product.preco.toFixed(2)}\n📏 ${sizeText}`;
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
-  });
+  renderModalImage();
+  modalOverlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 
 function closeModal() {
@@ -245,66 +259,88 @@ function closeModal() {
 }
 
 modalClose?.addEventListener('click', closeModal);
-modalOverlay?.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+modalOverlay?.addEventListener('click', (e) => {
+  if (e.target === modalOverlay) closeModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeModal();
+});
 
-// ===== ADMIN AUTH =====
-let adminCredentials = { email: '', senha_hash: '' };
-async function loadAdminCredentials() {
-  try {
-    const res = await fetch('data/admin.json');
-    adminCredentials = await res.json();
-  } catch (err) {
-    console.warn('Erro ao carregar admin.json, usando fallback.');
-    adminCredentials = { email: 'teste', senha_hash: 'MTIzNDU2' };
-  }
-}
-function toBase64(str) { return btoa(unescape(encodeURIComponent(str))); }
-
-adminLoginBtn?.addEventListener('click', () => {
+// ===== ADMIN =====
+adminLoginBtn?.addEventListener('click', async () => {
   const email = adminEmailInput.value.trim();
   const password = adminPasswordInput.value.trim();
-  if (email === adminCredentials.email && toBase64(password) === adminCredentials.senha_hash) {
-    isLoggedIn = true;
-    adminLoginDiv.style.display = 'none';
-    adminLoginError.style.display = 'none';
-    adminEmailDisplay.textContent = email;
-    adminPanel.classList.add('show');
-    renderAdminProducts();
-  } else {
-    adminLoginError.textContent = '❌ Usuário ou senha incorretos!';
+
+  if (!email || !password) {
+    adminLoginError.textContent = '❌ Preencha usuário e senha!';
     adminLoginError.style.display = 'block';
-    adminPasswordInput.value = '';
-    adminPasswordInput.focus();
+    return;
+  }
+
+  adminLoginBtn.textContent = '⏳ Entrando...';
+  adminLoginBtn.disabled = true;
+
+  try {
+    const user = await authenticateAdmin(email, password);
+
+    if (user) {
+      isLoggedIn = true;
+      sessionUser = user;
+      adminLoginDiv.style.display = 'none';
+      adminLoginError.style.display = 'none';
+      adminEmailDisplay.textContent = user.email;
+      adminPanel.classList.add('show');
+      renderAdminProducts();
+      showToast(`👋 Bem-vindo, ${user.nome || user.email}!`, 'success');
+    } else {
+      adminLoginError.textContent = '❌ Usuário ou senha incorretos!';
+      adminLoginError.style.display = 'block';
+      adminPasswordInput.value = '';
+      adminPasswordInput.focus();
+    }
+  } catch (err) {
+    adminLoginError.textContent = '❌ Erro ao autenticar. Tente novamente.';
+    adminLoginError.style.display = 'block';
+  } finally {
+    adminLoginBtn.textContent = 'Entrar';
+    adminLoginBtn.disabled = false;
   }
 });
-adminPasswordInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') adminLoginBtn.click(); });
-adminEmailInput?.addEventListener('keydown', (e) => { if (e.key === 'Enter') adminPasswordInput.focus(); });
+
+adminPasswordInput?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') adminLoginBtn.click();
+});
+adminEmailInput?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') adminPasswordInput.focus();
+});
+
 adminLogoutBtn?.addEventListener('click', () => {
   isLoggedIn = false;
+  sessionUser = null;
   adminPanel.classList.remove('show');
   adminLoginDiv.style.display = 'block';
   adminLoginError.style.display = 'none';
   adminEmailInput.value = '';
   adminPasswordInput.value = '';
+  showToast('👋 Desconectado!', 'info');
 });
 
-// ===== MULTI IMAGE UPLOAD =====
-let pendingImages = []; // array of { name, dataURL }
+// ===== IMAGE UPLOAD =====
+let pendingImages = [];
+const fileInput = $('#prod-imagem-file');
+const previewContainer = $('#previews-container');
 
-fileInputs.forEach(input => {
-  input.addEventListener('change', (e) => {
-    handleFiles(e.target);
-  });
-});
+// Also support URL input
+const imagemUrlInput = $('#prod-imagem-url');
+
+fileInput?.addEventListener('change', () => handleFiles(fileInput));
 
 function handleFiles(input) {
   const files = input.files;
   if (!files || files.length === 0) return;
-
   for (const file of files) {
     if (!file.type.startsWith('image/')) {
-      alert(`"${file.name}" não é uma imagem válida.`);
+      showToast(`"${file.name}" não é uma imagem válida.`, 'error');
       continue;
     }
     const reader = new FileReader();
@@ -314,91 +350,98 @@ function handleFiles(input) {
     };
     reader.readAsDataURL(file);
   }
-  // Reset input to allow re-selecting same files
   input.value = '';
 }
 
 function updatePreviews() {
   if (!previewContainer) return;
   if (pendingImages.length === 0) {
-    previewContainer.innerHTML = '<p style="color:#999;font-size:0.85rem;margin-top:8px;">Nenhuma imagem selecionada</p>';
+    previewContainer.innerHTML = '<p style="color:#999;font-size:0.85rem;">Nenhuma imagem selecionada</p>';
     return;
   }
-  let html = '<div class="multi-previews">';
-  pendingImages.forEach((img, idx) => {
-    html += `<div class="preview-item">
+  previewContainer.innerHTML = `<div class="multi-previews">${pendingImages.map((img, idx) =>
+    `<div class="preview-item">
       <img src="${img.dataURL}" alt="Prévia ${idx+1}">
       <button type="button" class="preview-remove" data-idx="${idx}">✕</button>
-    </div>`;
-  });
-  html += '</div>';
-  previewContainer.innerHTML = html;
-
-  document.querySelectorAll('.preview-remove').forEach(btn => {
+    </div>`
+  ).join('')}</div>`;
+  $$('.preview-remove').forEach(btn => {
     btn.addEventListener('click', () => {
-      const idx = parseInt(btn.dataset.idx);
-      pendingImages.splice(idx, 1);
+      pendingImages.splice(parseInt(btn.dataset.idx), 1);
       updatePreviews();
     });
   });
 }
 
 // ===== ADMIN: ADD PRODUCT =====
-adminForm?.addEventListener('submit', (e) => {
+adminForm?.addEventListener('submit', async (e) => {
   e.preventDefault();
 
-  const nome = document.getElementById('prod-nome').value.trim();
-  const descricao = document.getElementById('prod-descricao').value.trim();
-  const preco = parseFloat(document.getElementById('prod-preco').value);
-  const categoria = document.getElementById('prod-categoria').value;
-  const tamanhosRaw = document.getElementById('prod-tamanhos').value.trim();
+  const nome = $('#prod-nome').value.trim();
+  const descricao = $('#prod-descricao').value.trim();
+  const preco = parseFloat($('#prod-preco').value);
+  const categoria = $('#prod-categoria').value;
+  const tamanhosRaw = $('#prod-tamanhos').value.trim();
+  const urlImagem = imagemUrlInput?.value.trim();
 
   if (!nome || !descricao || isNaN(preco) || !tamanhosRaw) {
-    alert('Preencha todos os campos!');
+    showToast('⚠️ Preencha todos os campos!', 'warning');
     return;
   }
-  const tamanhos = tamanhosRaw.split(',').map(t => t.trim().toUpperCase()).filter(t => t);
-  if (tamanhos.length === 0) { alert('Informe pelo menos um tamanho.'); return; }
 
-// Build imagens array from pending uploads
-  // Store the actual dataURLs directly in the product so they persist in localStorage
+  const tamanhos = tamanhosRaw.split(',').map(t => t.trim().toUpperCase()).filter(t => t);
+  if (tamanhos.length === 0) {
+    showToast('⚠️ Informe pelo menos um tamanho.', 'warning');
+    return;
+  }
+
   let imagens = [];
   if (pendingImages.length > 0) {
-    pendingImages.forEach(img => {
-      // Store the dataURL directly in the imagens array for persistence
-      imagens.push(img.dataURL);
-    });
-  }
-  if (imagens.length === 0) {
-    imagens = [PLACEHOLDER_IMG];
+    imagens = pendingImages.map(img => img.dataURL);
+  } else if (urlImagem) {
+    imagens = [urlImagem];
+  } else {
+    imagens = [CONFIG.placeholder];
   }
 
-  const newProduct = {
-    id: Date.now(),
+  const novoProduto = {
     nome,
-    imagens,
     descricao,
     preco,
+    categoria,
     tamanhos,
-    categoria
+    imagens,
+    ativo: true
   };
 
-  products.push(newProduct);
-  saveProductsToStorage();
-  renderProducts();
-  renderAdminProducts();
-
   const btn = adminForm.querySelector('button[type="submit"]');
-  const originalText = btn.textContent;
-  btn.textContent = '✅ Produto Adicionado!';
-  setTimeout(() => { btn.textContent = originalText; }, 2000);
+  const orig = btn.textContent;
+  btn.textContent = '⏳ Salvando...';
+  btn.disabled = true;
 
-  adminForm.reset();
-  pendingImages = [];
-  updatePreviews();
+  try {
+    const result = await addProduct(novoProduto);
+
+    if (result) {
+      products.push(result);
+      renderProducts();
+      renderAdminProducts();
+      showToast('✅ Produto adicionado com sucesso!', 'success');
+      adminForm.reset();
+      pendingImages = [];
+      updatePreviews();
+    } else {
+      showToast('❌ Erro ao salvar no banco de dados.', 'error');
+    }
+  } catch (err) {
+    showToast('❌ Erro ao adicionar produto.', 'error');
+  } finally {
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
 });
 
-// ===== ADMIN: REMOVE PRODUCT =====
+// ===== ADMIN: RENDER & REMOVE =====
 function renderAdminProducts() {
   if (!adminProductsList) return;
   if (products.length === 0) {
@@ -408,53 +451,62 @@ function renderAdminProducts() {
   adminProductsList.innerHTML = products.map(p => {
     const firstImg = getImageSrc(getProductImages(p)[0]);
     return `<div class="admin-product-item" data-id="${p.id}">
-      <img src="${firstImg}" alt="${p.nome}" onerror="this.src='${PLACEHOLDER_IMG}'">
+      <img src="${firstImg}" alt="${p.nome}" onerror="this.src='${CONFIG.placeholder}'">
       <div class="info">
         <h4>${p.nome}</h4>
-        <p>${p.categoria} • R$ ${p.preco.toFixed(2)} • ${p.tamanhos.length} tamanhos • ${getProductImages(p).length} foto(s)</p>
+        <p>${p.categoria || 'Geral'} • R$ ${parseFloat(p.preco).toFixed(2)} • ${(p.tamanhos || []).length} tamanhos</p>
       </div>
       <button class="btn-remove" data-id="${p.id}">✕ Remover</button>
     </div>`;
   }).join('');
-  document.querySelectorAll('.btn-remove').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = parseInt(btn.dataset.id);
-      if (confirm('Tem certeza que deseja remover este produto?')) {
+
+  $$('.btn-remove').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id;
+      if (!confirm('Tem certeza que deseja remover este produto?')) return;
+
+      btn.textContent = '⏳...';
+      btn.disabled = true;
+
+      const ok = await removeProduct(id);
+      if (ok) {
         products = products.filter(p => p.id !== id);
-        saveProductsToStorage();
         renderProducts();
         renderAdminProducts();
+        showToast('✅ Produto removido!', 'success');
+      } else {
+        btn.textContent = '✕ Remover';
+        btn.disabled = false;
       }
     });
   });
 }
 
-// ===== DOWNLOAD JSON =====
-downloadJsonBtn?.addEventListener('click', () => {
-  const jsonString = JSON.stringify(products, null, 2);
-  const blob = new Blob([jsonString], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'products.json';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  if (jsonSaveMsg) {
-    jsonSaveMsg.style.display = 'inline';
-    setTimeout(() => { jsonSaveMsg.style.display = 'none'; }, 3000);
-  }
+// ===== MANUAL SYNC =====
+$('#sync-btn')?.addEventListener('click', async () => {
+  showToast('🔄 Sincronizando...', 'info');
+  await loadProducts();
 });
 
 // ===== WHATSAPP FLOAT =====
-document.querySelector('.whatsapp-float')?.addEventListener('click', () => {
+$('.whatsapp-float')?.addEventListener('click', () => {
   const msg = 'Olá! Vim do site Subli.me. Gostaria de mais informações sobre as camisetas personalizadas.';
-  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+  window.open(`https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
 });
 
 // ===== INIT =====
-loadProducts();
-loadAdminCredentials();
-navigateTo('home');
+async function init() {
+  const connected = initSupabase();
+
+  if (connected) {
+    await loadProducts();
+    showToast('✅ Conectado ao banco de dados Supabase!', 'success');
+  } else {
+    showToast('⚠️ Configure o Supabase em js/supabase-config.js', 'warning');
+  }
+
+  navigateTo('home');
+}
+
+init();
 

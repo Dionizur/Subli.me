@@ -6,6 +6,9 @@
   <title>Subli.me - Camisetas Personalizadas</title>
   <link rel="stylesheet" href="css/style.css">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👕</text></svg>">
+
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -51,7 +54,7 @@
           Ver Produtos
         </a>
       </div>
-<div class="hero-image">
+      <div class="hero-image">
         <img
           src="images/placeholder.svg"
           alt="Camisetas Subli.me"
@@ -115,7 +118,7 @@
       <input type="text" id="admin-email" placeholder="Usuário" autocomplete="username">
       <input type="password" id="admin-password" placeholder="Senha" autocomplete="current-password">
       <button id="admin-login-btn" class="btn btn-primary" style="width:100%;">Entrar</button>
-      <p id="admin-login-error" style="color:#e74c3c;margin-top:10px;font-size:0.85rem;display:none;">❌ E-mail ou senha incorretos!</p>
+      <p id="admin-login-error" style="color:#e74c3c;margin-top:10px;font-size:0.85rem;display:none;">❌ Usuário ou senha incorretos!</p>
     </div>
 
     <!-- Panel -->
@@ -123,7 +126,10 @@
       <!-- Logged in info -->
       <div class="admin-header">
         <p>👤 Conectado como <strong id="admin-email-display"></strong></p>
-        <button id="admin-logout-btn" class="btn btn-outline" style="padding:8px 20px;font-size:0.85rem;">Sair</button>
+        <div style="display:flex;gap:8px;">
+          <button id="sync-btn" class="btn btn-outline" style="padding:8px 16px;font-size:0.85rem;" title="Recarregar produtos do banco">🔄 Sincronizar</button>
+          <button id="admin-logout-btn" class="btn btn-outline" style="padding:8px 20px;font-size:0.85rem;">Sair</button>
+        </div>
       </div>
 
       <!-- Add product form -->
@@ -134,24 +140,33 @@
             <label for="prod-nome">Nome do Produto</label>
             <input type="text" id="prod-nome" placeholder="Ex: Camiseta Floral" required>
           </div>
-<div class="form-group">
-            <label for="prod-imagem-file">Imagens do Produto</label>
+
+          <div class="form-group">
+            <label for="prod-imagem-file">Imagens do Produto (upload)</label>
             <div class="file-upload-wrapper">
-              <input type="file" id="prod-imagem-file" class="prod-imagem-file" accept="image/*" multiple>
+              <input type="file" id="prod-imagem-file" accept="image/*" multiple>
               <label for="prod-imagem-file" class="file-upload-btn">📁 Escolher imagens</label>
               <span id="file-name" style="font-size:0.85rem;color:#888;margin-left:8px;">Nenhum arquivo selecionado</span>
             </div>
-            <p class="upload-hint">Você pode selecionar várias imagens de uma vez (frente, verso, lateral, etc.)</p>
+            <p class="upload-hint">Selecione várias imagens de uma vez (frente, verso, lateral, etc.)</p>
             <div id="previews-container"><p style="color:#999;font-size:0.85rem;margin-top:8px;">Nenhuma imagem selecionada</p></div>
           </div>
+
+          <div class="form-group">
+            <label for="prod-imagem-url">OU URL da Imagem (para links externos)</label>
+            <input type="url" id="prod-imagem-url" placeholder="https://exemplo.com/imagem.jpg">
+          </div>
+
           <div class="form-group">
             <label for="prod-descricao">Descrição</label>
             <textarea id="prod-descricao" placeholder="Descreva a camiseta, tecido, modelagem..." required></textarea>
           </div>
+
           <div class="form-group">
             <label for="prod-preco">Preço (R$)</label>
             <input type="number" id="prod-preco" step="0.10" min="0" placeholder="79.90" required>
           </div>
+
           <div class="form-group">
             <label for="prod-categoria">Categoria</label>
             <select id="prod-categoria">
@@ -160,10 +175,12 @@
               <option value="Unissex">Unissex</option>
             </select>
           </div>
+
           <div class="form-group">
             <label for="prod-tamanhos">Tamanhos (separados por vírgula)</label>
             <input type="text" id="prod-tamanhos" placeholder="PP, P, M, G, GG" required>
           </div>
+
           <button type="submit" class="btn btn-primary" style="width:100%;">Adicionar Produto</button>
         </form>
       </div>
@@ -172,17 +189,6 @@
       <div class="admin-products-list">
         <h3>📦 Produtos Cadastrados</h3>
         <div class="products-list"></div>
-      </div>
-
-      <!-- JSON download -->
-      <div class="admin-json-section">
-        <h3>💾 Sincronizar JSON</h3>
-        <p style="color:#888;font-size:0.85rem;margin-bottom:12px;">
-          Após adicionar ou remover produtos, faça o download do <strong>products.json</strong> atualizado 
-          e substitua o arquivo original na pasta <code>data/</code> do projeto.
-        </p>
-        <button id="download-json-btn" class="btn btn-outline">📥 Baixar products.json</button>
-        <span id="json-save-msg" style="color:#27ae60;font-size:0.85rem;margin-left:12px;display:none;">✅ Arquivo gerado!</span>
       </div>
     </div>
   </section>
@@ -204,6 +210,8 @@
   </footer>
 
   <!-- ===== SCRIPTS ===== -->
+  <script src="js/supabase-config.js"></script>
+  <script src="js/supabase-service.js"></script>
   <script src="js/script.js"></script>
 </body>
 </html>
