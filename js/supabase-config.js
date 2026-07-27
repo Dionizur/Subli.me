@@ -12,11 +12,9 @@
 // ========================================================
 
 const SUPABASE_CONFIG = {
-  // 👇 URL do seu projeto Supabase
-  url: 'https://SEU_PROJETO.supabase.co',
+  url: 'https://zfhyxjwamuxrfcwjeaia.supabase.co',
 
-  // 👇 Anon Key (pública) do seu projeto
-  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.SUA_CHAVE_ANON_AQUI',
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmaHl4andhbXV4cmZjd2plYWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5MzQ0MjgsImV4cCI6MjEwMDUxMDQyOH0.oGJNs8dv3skHu8swe06AdnqCgH27bnNSfv_h2KmFik8',
 
   // Nomes das tabelas no banco de dados
   tables: {
