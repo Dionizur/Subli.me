@@ -172,6 +172,73 @@ async function removeProduct(id) {
 // ===== ADMIN / AUTENTICAÇÃO =====
 
 /**
+ * CORREÇÃO RÁPIDA: Atualiza o hash da senha do admin no banco.
+ * 
+ * Se você cadastrou o admin com a senha "123456" em texto puro
+ * em vez do hash "MTIzNDU2", execute esta função no console:
+ * 
+ *   await fixAdminHash()
+ * 
+ * Ela vai corrigir o hash para que o login funcione.
+ */
+async function fixAdminHash() {
+  try {
+    const client = getClient();
+    
+    // Gera o hash correto para a senha 123456
+    const hashCorreto = btoa(unescape(encodeURIComponent('123456')));
+    console.log('🔧 Hash correto para senha 123456:', hashCorreto);
+    
+    // Verifica o que está no banco agora
+    const { data: adminAtual, error: selectError } = await client
+      .from('admins')
+      .select('*')
+      .eq('email', 'teste')
+      .maybeSingle();
+      
+    if (selectError) {
+      console.error('❌ Erro ao buscar admin:', selectError.message);
+      return;
+    }
+    
+    if (!adminAtual) {
+      console.error('❌ Admin "teste" não encontrado. Execute o SQL primeiro.');
+      return;
+    }
+    
+    console.log('📋 Admin atual:', adminAtual);
+    console.log('   Hash atual no banco:', adminAtual.senha_hash);
+    console.log('   Hash que deveria ser:', hashCorreto);
+    
+    if (adminAtual.senha_hash === hashCorreto) {
+      console.log('✅ Hash já está correto! O login deve funcionar.');
+      return;
+    }
+    
+    // Atualiza o hash
+    const { error: updateError } = await client
+      .from('admins')
+      .update({ senha_hash: hashCorreto })
+      .eq('email', 'teste');
+      
+    if (updateError) {
+      console.error('❌ Erro ao atualizar hash:', updateError.message);
+      return;
+    }
+    
+    console.log('✅ Hash atualizado com SUCESSO!');
+    console.log('   Agora tente logar com:');
+    console.log('   Email: teste');
+    console.log('   Senha: 123456');
+    console.log('');
+    console.log('   💡 Se ainda não funcionar, recarregue a página (F5) e tente novamente.');
+    
+  } catch (err) {
+    console.error('❌ Erro:', err.message);
+  }
+}
+
+/**
  * Testa a conexão e as tabelas do Supabase.
  * Útil para diagnóstico quando algo não funciona.
  * Chame no console: await testSupabaseConnection()
