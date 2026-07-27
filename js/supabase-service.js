@@ -9,10 +9,6 @@
 let _supabase = null;
 let _initialized = false;
 
-/**
- * Inicializa a conexão com o Supabase.
- * Retorna true se conectou, false caso contrário.
- */
 function initSupabase() {
   try {
     const { url, anonKey } = SUPABASE_CONFIG;
@@ -129,25 +125,33 @@ async function addProduct(product) {
 async function removeProduct(id) {
   try {
     const client = getClient();
-    const { error } = await client
+    console.log('🗑️ Removendo produto ID:', id);
+
+    const { data, error } = await client
       .from('products')
       .update({ ativo: false })
-      .eq('id', id);
+      .eq('id', id)
+      .select();
 
     if (error) {
       console.error('❌ Erro ao remover produto:', error.message);
+      console.error('   Código:', error.code);
+      console.error('   Detalhes:', error.details);
+      console.error('   ⚠️ Possível causa: RLS policy bloqueando UPDATE.');
+      console.error('   → Reexecute o supabase-schema.sql no SQL Editor do Supabase!');
       return false;
     }
 
+    console.log('✅ Produto removido com sucesso:', data);
     return true;
   } catch (err) {
-    console.error('❌ Erro ao remover produto:', err);
+    console.error('❌ Erro ao remover produto (exceção):', err);
     return false;
   }
 }
 
 // ===== ADMIN / AUTENTICAÇÃO =====
-// ===== SIMPLES E DIRETO: compara a senha digitada com a do banco =====
+// Compara a senha digitada diretamente com o valor salvo no banco
 
 async function authenticateAdmin(email, password) {
   try {
@@ -171,7 +175,6 @@ async function authenticateAdmin(email, password) {
     }
 
     console.log('✅ Admin encontrado!');
-    // COMPARAÇÃO DIRETA: senha digitada === senha salva no banco
     if (password === data.senha_hash) {
       console.log('✅ Login OK!');
       return { email: data.email, nome: data.nome || 'Admin' };

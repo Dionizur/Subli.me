@@ -66,11 +66,11 @@ ON products FOR SELECT USING (true);
 CREATE POLICY "Produtos inseríveis por anon"
 ON products FOR INSERT WITH CHECK (true);
 
+-- FIX: Adicionado WITH CHECK (true) para permitir UPDATE via anon key
 CREATE POLICY "Produtos atualizáveis por anon"
-ON products FOR UPDATE USING (true);
+ON products FOR UPDATE USING (true) WITH CHECK (true);
 
 -- Admins: permitir SELECT para autenticação via anon key
 -- A senha é armazenada como hash base64 (mesmo modelo de segurança do admin.json antigo)
 CREATE POLICY "Admins visível para autenticação"
 ON admins FOR SELECT USING (true);
-
