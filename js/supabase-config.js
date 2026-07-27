@@ -14,7 +14,7 @@
 const SUPABASE_CONFIG = {
   url: 'https://zfhyxjwamuxrfcwjeaia.supabase.co',
 
-  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmaHl4andhbXV4cmZjd2plYWlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5MzQ0MjgsImV4cCI6MjEwMDUxMDQyOH0.oGJNs8dv3skHu8swe06AdnqCgH27bnNSfv_h2KmFik8',
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmaHl4andhbXV4cmZjd2plYWlhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDkzNDQyOCwiZXhwIjoyMTAwNTEwNDI4fQ.WD8V___GWjpo0U9vZPGzsa3wORlyorus_voR09v21k4',
 
   // Nomes das tabelas no banco de dados
   tables: {
