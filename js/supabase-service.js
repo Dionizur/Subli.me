@@ -172,140 +172,8 @@ async function removeProduct(id) {
 // ===== ADMIN / AUTENTICAÇÃO =====
 
 /**
- * CORREÇÃO RÁPIDA: Atualiza o hash da senha do admin no banco.
- * 
- * Se você cadastrou o admin com a senha "123456" em texto puro
- * em vez do hash "MTIzNDU2", execute esta função no console:
- * 
- *   await fixAdminHash()
- * 
- * Ela vai corrigir o hash para que o login funcione.
- */
-async function fixAdminHash() {
-  try {
-    const client = getClient();
-    
-    // Gera o hash correto para a senha 123456
-    const hashCorreto = btoa(unescape(encodeURIComponent('123456')));
-    console.log('🔧 Hash correto para senha 123456:', hashCorreto);
-    
-    // Verifica o que está no banco agora
-    const { data: adminAtual, error: selectError } = await client
-      .from('admins')
-      .select('*')
-      .eq('email', 'teste')
-      .maybeSingle();
-      
-    if (selectError) {
-      console.error('❌ Erro ao buscar admin:', selectError.message);
-      return;
-    }
-    
-    if (!adminAtual) {
-      console.error('❌ Admin "teste" não encontrado. Execute o SQL primeiro.');
-      return;
-    }
-    
-    console.log('📋 Admin atual:', adminAtual);
-    console.log('   Hash atual no banco:', adminAtual.senha_hash);
-    console.log('   Hash que deveria ser:', hashCorreto);
-    
-    if (adminAtual.senha_hash === hashCorreto) {
-      console.log('✅ Hash já está correto! O login deve funcionar.');
-      return;
-    }
-    
-    // Atualiza o hash
-    const { error: updateError } = await client
-      .from('admins')
-      .update({ senha_hash: hashCorreto })
-      .eq('email', 'teste');
-      
-    if (updateError) {
-      console.error('❌ Erro ao atualizar hash:', updateError.message);
-      return;
-    }
-    
-    console.log('✅ Hash atualizado com SUCESSO!');
-    console.log('   Agora tente logar com:');
-    console.log('   Email: teste');
-    console.log('   Senha: 123456');
-    console.log('');
-    console.log('   💡 Se ainda não funcionar, recarregue a página (F5) e tente novamente.');
-    
-  } catch (err) {
-    console.error('❌ Erro:', err.message);
-  }
-}
-
-/**
- * Testa a conexão e as tabelas do Supabase.
- * Útil para diagnóstico quando algo não funciona.
- * Chame no console: await testSupabaseConnection()
- */
-async function testSupabaseConnection() {
-  console.log('========================================');
-  console.log('🔍 DIAGNÓSTICO SUPABASE');
-  console.log('========================================');
-
-  // 1. Verifica se o cliente existe
-  try {
-    const client = getClient();
-    console.log('✅ Cliente Supabase inicializado');
-  } catch (err) {
-    console.error('❌ Cliente Supabase NÃO inicializado:', err.message);
-    console.error('   → initSupabase() falhou. Verifique a anonKey.');
-    return;
-  }
-
-  const client = getClient();
-
-  // 2. Testa a tabela admins
-  console.log('\n📋 Testando tabela "admins"...');
-  try {
-    const { data, error } = await client.from('admins').select('*');
-    if (error) {
-      console.error('❌ Erro ao consultar admins:', error.message);
-      console.error('   → Código:', error.code);
-      console.error('   → Detalhes:', error.details);
-      console.error('   ⚠️ Execute o arquivo supabase-schema.sql no SQL Editor do Supabase!');
-    } else {
-      console.log(`✅ Tabela "admins" existe! ${data.length} registro(s) encontrado(s):`);
-      data.forEach(a => console.log(`   - Email: "${a.email}", Nome: "${a.nome}", Hash: "${a.senha_hash}"`));
-    }
-  } catch (err) {
-    console.error('❌ Exceção ao consultar admins:', err.message);
-    console.error('   ⚠️ A tabela "admins" pode não existir. Execute o schema SQL!');
-  }
-
-  // 3. Testa a tabela products
-  console.log('\n📋 Testando tabela "products"...');
-  try {
-    const { data, error } = await client.from('products').select('*').limit(3);
-    if (error) {
-      console.error('❌ Erro ao consultar products:', error.message);
-      console.error('   → Código:', error.code);
-      console.error('   ⚠️ Execute o arquivo supabase-schema.sql no SQL Editor do Supabase!');
-    } else {
-      console.log(`✅ Tabela "products" existe! ${data.length} registro(s) encontrado(s).`);
-    }
-  } catch (err) {
-    console.error('❌ Exceção ao consultar products:', err.message);
-    console.error('   ⚠️ A tabela "products" pode não existir. Execute o schema SQL!');
-  }
-
-  console.log('\n========================================');
-  console.log('📌 Se viu erros acima, siga estes passos:');
-  console.log('   1. Acesse: https://supabase.com/dashboard/project/zfhyxjwamuxrfcwjeaia');
-  console.log('   2. Vá em SQL Editor > New Query');
-  console.log('   3. Cole TODO o conteúdo do arquivo supabase-schema.sql');
-  console.log('   4. Execute (CTRL+ENTER ou clicar em "Run")');
-  console.log('   5. Recarregue o site (F5)');
-  console.log('========================================');
-}
-
-/**
  * Autentica um administrador.
+ * Aceita tanto senha em hash (MTIzNDU2) quanto texto puro (123456).
  * @param {string} email - Email ou usuário do admin
  * @param {string} password - Senha em texto puro
  * @returns {Promise<Object|null>} { email, nome } ou null
@@ -324,50 +192,144 @@ async function authenticateAdmin(email, password) {
 
     if (error) {
       console.error('❌ Erro SQL ao buscar admin:', error.message);
-      console.error('   Código:', error.code);
-      console.error('   Detalhes:', error.details);
-      console.error('   ⚠️ A tabela "admins" pode não existir!');
-      console.error('   → Execute o arquivo supabase-schema.sql no SQL Editor do Supabase');
       return null;
     }
 
     if (!data) {
       console.warn(`⚠️ Admin "${email}" não encontrado no banco.`);
-      console.warn('   → Verifique se o SQL foi executado no Supabase SQL Editor');
-      console.warn('   → O admin padrão é: email="teste", senha="123456"');
-      console.warn('   → Comando SQL: INSERT INTO admins (email, senha_hash, nome) VALUES (\'teste\', \'MTIzNDU2\', \'Admin Teste\');');
+      console.warn('   O admin padrão é: email="teste", senha="123456"');
       return null;
     }
 
-    console.log('✅ Admin encontrado no banco:', data.email);
+    console.log('✅ Admin encontrado:', data.email);
 
-    // Verifica senha com hash base64 (compatível com o schema existente)
-    const hash = btoa(unescape(encodeURIComponent(password)));
-    console.log('   Hash esperado (no banco):', data.senha_hash);
-    console.log('   Hash gerado (da senha): ', hash);
+    // ===== VERIFICAÇÃO INTELIGENTE =====
+    // Aceita tanto HASH (MTIzNDU2) quanto TEXTO PURO (123456)
+    const senhaNoBanco = data.senha_hash;
+    const hashDaDigitada = btoa(unescape(encodeURIComponent(password)));
 
-    if (hash === data.senha_hash) {
-      console.log('✅ Senha correta!');
+    console.log('   🔐 Comparando:');
+    console.log('      - Hash digitado:', hashDaDigitada);
+    console.log('      - No banco:', senhaNoBanco);
+
+    // Aceita se: hash bate OU texto puro bate
+    if (hashDaDigitada === senhaNoBanco || password === senhaNoBanco) {
+      console.log('✅ Senha correta! Login autorizado.');
       return { email: data.email, nome: data.nome || 'Admin' };
     }
 
-    console.warn('⚠️ Senha incorreta para:', email);
-    console.warn('   → O hash gerado da senha fornecida não bate com o hash no banco.');
-    console.warn('   → Verifique se a senha está correta.');
+    console.warn(`⚠️ Senha incorreta para "${email}"`);
     return null;
   } catch (err) {
-    console.error('❌ Erro na autenticação (exceção):', err.message);
-    console.error('   ⚠️ Pode ser problema de conexão com o Supabase.');
+    console.error('❌ Erro na autenticação:', err.message);
     return null;
   }
 }
 
-// ===== NORMALIZAÇÃO =====
+/**
+ * CORREÇÃO RÁPIDA: Atualiza o hash da senha do admin no banco.
+ * Execute no console do navegador: await fixAdminHash()
+ */
+async function fixAdminHash() {
+  try {
+    const client = getClient();
+
+    const hashCorreto = btoa(unescape(encodeURIComponent('123456')));
+    console.log('🔧 Hash correto para senha 123456:', hashCorreto);
+
+    const { data: adminAtual, error: selectError } = await client
+      .from('admins')
+      .select('*')
+      .eq('email', 'teste')
+      .maybeSingle();
+
+    if (selectError) {
+      console.error('❌ Erro ao buscar admin:', selectError.message);
+      return;
+    }
+
+    if (!adminAtual) {
+      console.error('❌ Admin "teste" não encontrado.');
+      return;
+    }
+
+    console.log('📋 Admin atual:', adminAtual);
+    console.log('   Hash atual no banco:', adminAtual.senha_hash);
+    console.log('   Hash que deveria ser:', hashCorreto);
+
+    if (adminAtual.senha_hash === hashCorreto) {
+      console.log('✅ Hash já está correto!');
+      return;
+    }
+
+    const { error: updateError } = await client
+      .from('admins')
+      .update({ senha_hash: hashCorreto })
+      .eq('email', 'teste');
+
+    if (updateError) {
+      console.error('❌ Erro ao atualizar:', updateError.message);
+      return;
+    }
+
+    console.log('✅ Hash atualizado! Tente logar: teste / 123456');
+  } catch (err) {
+    console.error('❌ Erro:', err.message);
+  }
+}
 
 /**
- * Normaliza um produto do banco para o formato usado no frontend.
- * Garante que 'imagens' seja sempre um array.
+ * Testa a conexão e as tabelas do Supabase.
+ * Chame no console: await testSupabaseConnection()
  */
+async function testSupabaseConnection() {
+  console.log('========================================');
+  console.log('🔍 DIAGNÓSTICO SUPABASE');
+  console.log('========================================');
+
+  try {
+    const client = getClient();
+    console.log('✅ Cliente Supabase inicializado');
+  } catch (err) {
+    console.error('❌ Cliente NÃO inicializado:', err.message);
+    return;
+  }
+
+  const client = getClient();
+
+  console.log('\n📋 Testando tabela "admins"...');
+  try {
+    const { data, error } = await client.from('admins').select('*');
+    if (error) {
+      console.error('❌ Erro:', error.message, 'Código:', error.code);
+    } else {
+      console.log(`✅ Existe! ${data.length} registro(s):`);
+      data.forEach(a => console.log(`   - "${a.email}" hash="${a.senha_hash}" nome="${a.nome}"`));
+    }
+  } catch (err) {
+    console.error('❌ Exceção:', err.message);
+  }
+
+  console.log('\n📋 Testando tabela "products"...');
+  try {
+    const { data, error } = await client.from('products').select('*').limit(3);
+    if (error) {
+      console.error('❌ Erro:', error.message, 'Código:', error.code);
+    } else {
+      console.log(`✅ Existe! ${data.length} registro(s).`);
+    }
+  } catch (err) {
+    console.error('❌ Exceção:', err.message);
+  }
+
+  console.log('\n========================================');
+  console.log('📌 Acesse: https://supabase.com/dashboard/project/zfhyxjwamuxrfcwjeaia');
+  console.log('   SQL Editor → New Query → Cole supabase-schema.sql → Run');
+  console.log('========================================');
+}
+
+// ===== NORMALIZAÇÃO =====
+
 function normalizeProduct(p) {
   return {
     ...p,
@@ -377,88 +339,35 @@ function normalizeProduct(p) {
   };
 }
 
-/**
- * Retorna o placeholder padrão quando não há imagem.
- */
 function getPlaceholder() {
   return 'images/placeholder.svg';
 }
 
 // ===== SEED INICIAL (OPCIONAL) =====
-// Use esta função UMA VEZ para popular o banco com dados iniciais.
-// Execute no console do navegador: seedInitialData()
+// Execute no console: await seedInitialData()
 
 async function seedInitialData() {
   const products = [
-    {
-      nome: 'Camiseta Street Art',
-      descricao: 'Camiseta oversized com estampa artística exclusiva. Produzida em algodão premium 30.1, costura reforçada e acabamento de alta qualidade. Ideal para looks urbanos e despojados.',
-      preco: 79.90,
-      categoria: 'Masculina',
-      tamanhos: ['PP', 'P', 'M', 'G', 'GG'],
-      imagens: ['https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=400&h=400&fit=crop'],
-      ativo: true
-    },
-    {
-      nome: 'Camiseta Minimalista',
-      descricao: 'Camiseta básica de corte reto com design minimalista. Tecido leve e confortável, perfeita para o dia a dia. Disponível em diversas cores.',
-      preco: 69.90,
-      categoria: 'Feminina',
-      tamanhos: ['P', 'M', 'G', 'GG'],
-      imagens: ['https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=400&h=400&fit=crop'],
-      ativo: true
-    },
-    {
-      nome: 'Camiseta Vintage',
-      descricao: 'Camiseta com estampa inspirada nos anos 80/90. Modelo casual com gola careca e mangas curtas. Toque macio e caimento perfeito.',
-      preco: 89.90,
-      categoria: 'Unissex',
-      tamanhos: ['P', 'M', 'G', 'GG', 'XGG'],
-      imagens: ['https://images.unsplash.com/photo-1554568218-0f1715e72254?w=400&h=400&fit=crop'],
-      ativo: true
-    },
-    {
-      nome: 'Camiseta Geométrica',
-      descricao: 'Camiseta estilosa com padrão geométrico moderno. Confortável e respirável, produzida com material de alta durabilidade.',
-      preco: 74.90,
-      categoria: 'Masculina',
-      tamanhos: ['PP', 'P', 'M', 'G'],
-      imagens: ['https://images.unsplash.com/photo-1586339949916-3e5457d58f6a?w=400&h=400&fit=crop'],
-      ativo: true
-    },
-    {
-      nome: 'Camiseta Floral',
-      descricao: 'Camiseta com estampa floral delicada. Modelo ajustado ao corpo, decote redondo. Perfeita para um visual romântico e moderno.',
-      preco: 79.90,
-      categoria: 'Feminina',
-      tamanhos: ['P', 'M', 'G', 'GG'],
-      imagens: ['https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=400&h=400&fit=crop'],
-      ativo: true
-    },
-    {
-      nome: 'Camiseta Esportiva',
-      descricao: 'Camiseta dry-fit para atividades esportivas. Leve, respirável e com proteção UV. Estampa reflectiva para segurança noturna.',
-      preco: 94.90,
-      categoria: 'Unissex',
-      tamanhos: ['P', 'M', 'G', 'GG', 'XGG'],
-      imagens: ['https://images.unsplash.com/photo-1622445275463-afa2ab738c34?w=400&h=400&fit=crop'],
-      ativo: true
-    }
+    { nome: 'Camiseta Street Art', descricao: 'Camiseta oversized com estampa artística exclusiva.', preco: 79.90, categoria: 'Masculina', tamanhos: ['PP','P','M','G','GG'], imagens: ['https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=400&h=400&fit=crop'], ativo: true },
+    { nome: 'Camiseta Minimalista', descricao: 'Camiseta básica de corte reto com design minimalista.', preco: 69.90, categoria: 'Feminina', tamanhos: ['P','M','G','GG'], imagens: ['https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=400&h=400&fit=crop'], ativo: true },
+    { nome: 'Camiseta Vintage', descricao: 'Camiseta com estampa inspirada nos anos 80/90.', preco: 89.90, categoria: 'Unissex', tamanhos: ['P','M','G','GG','XGG'], imagens: ['https://images.unsplash.com/photo-1554568218-0f1715e72254?w=400&h=400&fit=crop'], ativo: true },
+    { nome: 'Camiseta Geométrica', descricao: 'Camiseta estilosa com padrão geométrico moderno.', preco: 74.90, categoria: 'Masculina', tamanhos: ['PP','P','M','G'], imagens: ['https://images.unsplash.com/photo-1586339949916-3e5457d58f6a?w=400&h=400&fit=crop'], ativo: true },
+    { nome: 'Camiseta Floral', descricao: 'Camiseta com estampa floral delicada.', preco: 79.90, categoria: 'Feminina', tamanhos: ['P','M','G','GG'], imagens: ['https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=400&h=400&fit=crop'], ativo: true },
+    { nome: 'Camiseta Esportiva', descricao: 'Camiseta dry-fit para atividades esportivas.', preco: 94.90, categoria: 'Unissex', tamanhos: ['P','M','G','GG','XGG'], imagens: ['https://images.unsplash.com/photo-1622445275463-afa2ab738c34?w=400&h=400&fit=crop'], ativo: true }
   ];
 
   try {
     const client = getClient();
     const { data, error } = await client.from('products').insert(products).select();
-
     if (error) {
-      console.error('❌ Erro ao executar seed:', error.message);
+      console.error('❌ Erro no seed:', error.message);
       return;
     }
-
     console.log(`✅ Seed concluído! ${data.length} produtos inseridos.`);
     return data;
   } catch (err) {
     console.error('❌ Erro no seed:', err);
   }
 }
-
+</｜｜DSML｜｜parameter>
+</create_file>
