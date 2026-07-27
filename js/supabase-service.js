@@ -17,19 +17,71 @@ function initSupabase() {
   try {
     const { url, anonKey } = SUPABASE_CONFIG;
 
-    if (!url || url.includes('SEU_PROJETO') || !anonKey || anonKey.includes('SUA_CHAVE')) {
-      console.warn('⚠️ Supabase não configurado. Edite js/supabase-config.js');
+    // Verificações de configuração
+    if (!anonKey || anonKey.trim() === '') {
+      showDiagnostic('❌', 'anonKey está vazia! Copie a chave "anon public" do Supabase.');
+      console.error('❌ SUPABASE: anonKey está vazia.');
+      return false;
+    }
+
+    if (!url || url.includes('SEU_PROJETO')) {
+      showDiagnostic('❌', 'URL do projeto não configurada.');
+      console.error('❌ SUPABASE: URL não configurada.');
+      return false;
+    }
+
+    // Verifica se parece service_role (não deve ser usada no frontend)
+    if (anonKey.includes('service_role')) {
+      showDiagnostic('❌', 'Você usou a chave "service_role"! Use a "anon public key". Veja as instruções no supabase-config.js.');
+      console.error('❌ SUPABASE: Chave service_role detectada. Use a anon public key.');
       return false;
     }
 
     _supabase = supabase.createClient(url, anonKey);
     _initialized = true;
+    showDiagnostic('✅', 'Conexão com Supabase estabelecida!');
     console.log('✅ Supabase conectado!');
     return true;
   } catch (err) {
     console.error('❌ Erro ao conectar Supabase:', err);
+    showDiagnostic('❌', 'Erro ao conectar: ' + err.message);
     return false;
   }
+}
+
+/**
+ * Mostra um diagnóstico visual na página.
+ */
+function showDiagnostic(icon, message) {
+  const existing = document.getElementById('supabase-diagnostic');
+  if (existing) existing.remove();
+
+  const div = document.createElement('div');
+  div.id = 'supabase-diagnostic';
+  div.style.cssText = `
+    position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+    z-index: 99999; background: #1a1a2e; color: #fff;
+    padding: 20px 28px; border-radius: 12px; font-size: 1rem;
+    max-width: 600px; text-align: center; line-height: 1.6;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    border: 2px solid ${icon === '✅' ? '#27ae60' : '#e74c3c'};
+    font-family: 'Segoe UI', sans-serif;
+  `;
+  div.innerHTML = `
+    <div style="font-size: 2rem; margin-bottom: 8px;">${icon}</div>
+    <div>${message}</div>
+    <div style="margin-top: 12px; font-size: 0.85rem; opacity: 0.7;">
+      Abra o console (F12) para mais detalhes
+    </div>
+  `;
+  document.body.prepend(div);
+
+  // Auto remove após 15s
+  setTimeout(() => {
+    div.style.opacity = '0';
+    div.style.transition = 'opacity 0.5s';
+    setTimeout(() => div.remove(), 600);
+  }, 15000);
 }
 
 /**
