@@ -57,20 +57,24 @@ DROP POLICY IF EXISTS "Produtos visíveis para todos" ON products;
 DROP POLICY IF EXISTS "Admins visível para autenticação" ON admins;
 DROP POLICY IF EXISTS "Produtos inseríveis por anon" ON products;
 DROP POLICY IF EXISTS "Produtos atualizáveis por anon" ON products;
+DROP POLICY IF EXISTS "Produtos deletáveis por anon" ON products;
 
 -- Produtos: qualquer um pode ler (anon)
 CREATE POLICY "Produtos visíveis para todos"
 ON products FOR SELECT USING (true);
 
--- Produtos: qualquer um pode inserir/atualizar (via anon key)
+-- Produtos: qualquer um pode inserir (via anon key)
 CREATE POLICY "Produtos inseríveis por anon"
 ON products FOR INSERT WITH CHECK (true);
 
--- FIX: Adicionado WITH CHECK (true) para permitir UPDATE via anon key
+-- Produtos: qualquer um pode atualizar (via anon key)
 CREATE POLICY "Produtos atualizáveis por anon"
 ON products FOR UPDATE USING (true) WITH CHECK (true);
 
+-- Produtos: qualquer um pode DELETAR (via anon key)
+CREATE POLICY "Produtos deletáveis por anon"
+ON products FOR DELETE USING (true);
+
 -- Admins: permitir SELECT para autenticação via anon key
--- A senha é armazenada como hash base64 (mesmo modelo de segurança do admin.json antigo)
 CREATE POLICY "Admins visível para autenticação"
 ON admins FOR SELECT USING (true);

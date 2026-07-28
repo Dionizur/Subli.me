@@ -87,7 +87,6 @@ async function fetchProducts() {
     const { data, error } = await client
       .from('products')
       .select('*')
-      .eq('ativo', true)
       .order('created_at', { ascending: true });
 
     if (error) {
@@ -125,33 +124,29 @@ async function addProduct(product) {
 async function removeProduct(id) {
   try {
     const client = getClient();
-    console.log('🗑️ Removendo produto ID:', id);
+    console.log('🗑️ Deletando produto ID:', id);
 
-    const { data, error } = await client
+    const { error } = await client
       .from('products')
-      .update({ ativo: false })
-      .eq('id', id)
-      .select();
+      .delete()
+      .eq('id', id);
 
     if (error) {
-      console.error('❌ Erro ao remover produto:', error.message);
+      console.error('❌ Erro ao deletar produto:', error.message);
       console.error('   Código:', error.code);
       console.error('   Detalhes:', error.details);
-      console.error('   ⚠️ Possível causa: RLS policy bloqueando UPDATE.');
-      console.error('   → Reexecute o supabase-schema.sql no SQL Editor do Supabase!');
       return false;
     }
 
-    console.log('✅ Produto removido com sucesso:', data);
+    console.log('✅ Produto DELETADO do banco com sucesso!');
     return true;
   } catch (err) {
-    console.error('❌ Erro ao remover produto (exceção):', err);
+    console.error('❌ Erro ao deletar produto (exceção):', err);
     return false;
   }
 }
 
 // ===== ADMIN / AUTENTICAÇÃO =====
-// Compara a senha digitada diretamente com o valor salvo no banco
 
 async function authenticateAdmin(email, password) {
   try {
