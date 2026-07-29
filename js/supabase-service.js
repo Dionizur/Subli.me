@@ -101,34 +101,60 @@ const ADMIN_PADRAO = {
 };
 
 async function authenticateAdmin(email, password) {
+  console.log('========== LOGIN ATTEMPT ==========');
+  console.log('Email digitado:', JSON.stringify(email));
+  console.log('Senha digitada:', JSON.stringify(password));
+  console.log('Admin padrao local email:', JSON.stringify(ADMIN_PADRAO.email));
+  console.log('Hash esperado local:', ADMIN_PADRAO.senha_hash);
+  console.log('Hash gerado de "' + password + '":', btoa(unescape(encodeURIComponent(password))));
+
   // 1. Tenta autenticar pelo Supabase
   try {
     const client = getClient();
+    console.log('Consultando tabela admins no Supabase...');
     const { data, error } = await client
       .from('admins')
       .select('email, senha_hash, nome')
       .eq('email', email)
       .maybeSingle();
 
-    if (!error && data) {
-      // Gera hash da senha digitada
+    if (error) {
+      console.log('Erro na consulta Supabase:', error.message, '(usando fallback local)');
+    } else if (data) {
+      console.log('Admin encontrado no Supabase:', data.email);
       const hash = btoa(unescape(encodeURIComponent(password)));
+      console.log('Hash BD:', data.senha_hash, '| Hash gerado:', hash);
       if (hash === data.senha_hash) {
+        console.log('Login via Supabase OK');
         return { email: data.email, nome: data.nome || 'Admin' };
       }
+    } else {
+      console.log('Nenhum admin encontrado no Supabase para:', email);
     }
   } catch (e) {
-    // Supabase falhou, continua para fallback
+    console.log('Excecao ao consultar Supabase:', e.message, '(usando fallback local)');
   }
 
   // 2. Fallback: compara com o admin padrao local
+  console.log('--- Tentando fallback local ---');
+  console.log('Comparando emails:', JSON.stringify(email), '===', JSON.stringify(ADMIN_PADRAO.email), '?');
+
   if (email === ADMIN_PADRAO.email) {
     const hash = btoa(unescape(encodeURIComponent(password)));
+    console.log('Hash esperado local:', ADMIN_PADRAO.senha_hash);
+    console.log('Hash gerado local:', hash);
     if (hash === ADMIN_PADRAO.senha_hash) {
+      console.log('Login via fallback local OK');
       return { email: ADMIN_PADRAO.email, nome: ADMIN_PADRAO.nome };
     }
+    console.log('Senha nao confere no fallback local');
+    console.log('Dica: O hash de "123456" em base64 eh:', btoa(unescape(encodeURIComponent('123456'))));
+  } else {
+    console.log('Email nao confere com admin padrao. Use email="teste" (sem espacos)');
   }
 
+  console.log('LOGIN FALHOU');
+  console.log('==================================');
   return null;
 }
 

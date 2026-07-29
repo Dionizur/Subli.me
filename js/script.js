@@ -10,6 +10,7 @@ const CONFIG = {
 let products = [];
 let isLoggedIn = false;
 let sessionUser = null;
+let heroCarouselInterval = null;
 
 const $ = (s, p = document) => p.querySelector(s);
 const $$ = (s, p = document) => [...p.querySelectorAll(s)];
@@ -33,6 +34,125 @@ const adminEmailDisplay = $('#admin-email-display');
 const adminLogoutBtn = $('#admin-logout-btn');
 const adminForm = $('#admin-form');
 const adminProductsList = $('.admin-products-list .products-list');
+
+// ===== DARK MODE =====
+const darkToggle = document.getElementById('dark-toggle');
+
+function getDarkModePreference() {
+  const saved = localStorage.getItem('sublime_dark_mode');
+  if (saved !== null) return saved === 'true';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+function applyDarkMode(isDark) {
+  if (isDark) {
+    document.body.classList.add('dark-mode');
+    if (darkToggle) darkToggle.textContent = '☀️';
+  } else {
+    document.body.classList.remove('dark-mode');
+    if (darkToggle) darkToggle.textContent = '🌙';
+  }
+  localStorage.setItem('sublime_dark_mode', isDark);
+}
+
+function toggleDarkMode() {
+  const isDark = !document.body.classList.contains('dark-mode');
+  applyDarkMode(isDark);
+}
+
+if (darkToggle) {
+  darkToggle.addEventListener('click', toggleDarkMode);
+  // Apply saved preference on load
+  applyDarkMode(getDarkModePreference());
+}
+
+// ===== HERO CAROUSEL =====
+const heroCarouselTrack = document.getElementById('hero-carousel-track');
+const heroCarouselDots = document.getElementById('hero-carousel-dots');
+
+function initHeroCarousel() {
+  if (!heroCarouselTrack) return;
+
+  // Get all product images for the carousel
+  const productImages = products
+    .filter(p => p.imagens && Array.isArray(p.imagens) && p.imagens.length > 0)
+    .map(p => p.imagens[0]);
+
+  // If no products, keep placeholder
+  if (productImages.length === 0) {
+    heroCarouselTrack.innerHTML = '<img src="' + CONFIG.placeholder + '" alt="Camisetas Subli.me" class="hero-carousel-slide">';
+    if (heroCarouselDots) heroCarouselDots.innerHTML = '';
+    return;
+  }
+
+  // Limit to 8 images max
+  const slides = productImages.slice(0, 8);
+
+  // Build slides
+  heroCarouselTrack.innerHTML = slides.map(src =>
+    '<img src="' + src + '" alt="Camiseta" class="hero-carousel-slide" onerror="this.src=' + "'" + CONFIG.placeholder + "'" + '">'
+  ).join('');
+
+  // Build dots
+  if (heroCarouselDots) {
+    heroCarouselDots.innerHTML = slides.map((_, i) =>
+      '<span class="hero-dot' + (i === 0 ? ' active' : '') + '" data-index="' + i + '"></span>'
+    ).join('');
+
+    // Dot click navigation
+    $$('.hero-dot').forEach(dot => {
+      dot.addEventListener('click', () => {
+        const idx = parseInt(dot.dataset.index);
+        goToHeroSlide(idx);
+        resetHeroInterval();
+      });
+    });
+  }
+
+  // Start auto-play
+  startHeroAutoPlay();
+}
+
+let heroCurrentSlide = 0;
+
+function goToHeroSlide(index) {
+  if (!heroCarouselTrack) return;
+  const slides = heroCarouselTrack.querySelectorAll('img');
+  if (!slides.length) return;
+
+  heroCurrentSlide = ((index % slides.length) + slides.length) % slides.length;
+  const offset = -heroCurrentSlide * 100;
+  heroCarouselTrack.style.transform = 'translateX(' + offset + '%)';
+
+  // Update dots
+  $$('.hero-dot').forEach(d => d.classList.remove('active'));
+  const activeDot = $('.hero-dot[data-index="' + heroCurrentSlide + '"]');
+  if (activeDot) activeDot.classList.add('active');
+}
+
+function nextHeroSlide() {
+  if (!heroCarouselTrack) return;
+  const slides = heroCarouselTrack.querySelectorAll('img');
+  if (!slides.length) return;
+  goToHeroSlide(heroCurrentSlide + 1);
+}
+
+function startHeroAutoPlay() {
+  stopHeroAutoPlay();
+  heroCarouselInterval = setInterval(nextHeroSlide, 3500);
+}
+
+function stopHeroAutoPlay() {
+  if (heroCarouselInterval) {
+    clearInterval(heroCarouselInterval);
+    heroCarouselInterval = null;
+  }
+}
+
+function resetHeroInterval() {
+  stopHeroAutoPlay();
+  startHeroAutoPlay();
+}
 
 // ===== TOAST =====
 function showToast(msg, type = 'info') {
@@ -103,6 +223,7 @@ async function loadProducts() {
   products = (data && data.length > 0) ? data : [];
   renderProducts();
   renderAdminProducts();
+  initHeroCarousel();
 }
 
 function renderProducts() {
@@ -113,7 +234,7 @@ function renderProducts() {
   }
   productsGrid.innerHTML = products.map(p => {
     const img = getImageSrc(getProductImages(p)[0]);
-    return '<div class="product-card" data-id="' + p.id + '"><img src="' + img + '" alt="' + p.nome + '" loading="lazy" onerror="this.src=' + "'" + CONFIG.placeholder + "'" + '"><div class="product-info"><div class="categoria">' + (p.categoria || 'Geral') + '</div><h3>' + p.nome + '</h3><div class="preco">R$ ' + parseFloat(p.preco).toFixed(2) + '</div><div class="tamanhos-mini">' + (p.tamanhos || []).map(t => '<span>' + t + '</span>').join('') + '</div></div>';
+    return '<div class="product-card" data-id="' + p.id + '"><div class="product-card-image"><img src="' + img + '" alt="' + p.nome + '" loading="lazy" onerror="this.src=' + "'" + CONFIG.placeholder + "'" + '"></div><div class="product-info"><div class="categoria">' + (p.categoria || 'Geral') + '</div><h3>' + p.nome + '</h3><div class="preco">R$ ' + parseFloat(p.preco).toFixed(2) + '</div><div class="tamanhos-mini">' + (p.tamanhos || []).map(t => '<span>' + t + '</span>').join('') + '</div></div>';
   }).join('');
   $$('.product-card').forEach(card => {
     card.addEventListener('click', () => {
@@ -197,8 +318,8 @@ if (adminLoginBtn) {
         adminPanel.classList.add('show');
         renderAdminProducts();
         showToast('Bem-vindo, ' + (user.nome || user.email) + '!', 'success');
-      } else {
-        adminLoginError.textContent = 'Usuario ou senha incorretos! Tente: teste / 123456';
+} else {
+        adminLoginError.textContent = 'Usuario ou senha incorretos! Tente: usuario="teste" senha="123456"';
         adminLoginError.style.display = 'block';
         adminPasswordInput.value = '';
         adminPasswordInput.focus();
@@ -346,6 +467,8 @@ async function init() {
     await loadProducts();
     showToast('Conectado!', 'success');
   } else {
+    // Even without DB, show empty carousel
+    initHeroCarousel();
     showToast('Configure o Supabase.', 'warning');
   }
   navigateTo('home');

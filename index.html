@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Subli.me - Camisetas Personalizadas</title>
   <link rel="stylesheet" href="css/style.css">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👕</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👕</text></svg>
 
   <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -24,11 +24,14 @@
         <li><a href="#" data-section="products">Produtos</a></li>
         <li><a href="#" data-section="admin">Admin</a></li>
       </ul>
-      <button class="hamburger" aria-label="Menu">
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button id="dark-toggle" class="dark-toggle" aria-label="Modo escuro">🌙</button>
+        <button class="hamburger" aria-label="Menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
     </nav>
   </header>
 
@@ -41,6 +44,9 @@
   <section id="home" class="section">
     <div class="hero">
       <div class="hero-content">
+        <div class="hero-badge">
+          <span></span> Camisetas personalizadas sob encomenda
+        </div>
         <h1>
           Sua camiseta<br>
           <span>única e personalizada</span>
@@ -50,17 +56,21 @@
           carinho e dedicação. Escolha o design, o tamanho e receba no conforto
           da sua casa.
         </p>
-        <a href="#" class="btn btn-primary" data-section="products" onclick="event.preventDefault(); navigateTo('products')">
-          Ver Produtos
-        </a>
-      </div>
+        <div class="hero-buttons">
+          <a href="#" class="btn btn-primary" onclick="event.preventDefault(); navigateTo('products')">
+            Ver Produtos
+          </a>
+          <a href="https://wa.me/5541988259550?text=Olá! Vim do site Subli.me e gostaria de fazer uma encomenda." target="_blank" class="btn btn-whatsapp">
+            💬 WhatsApp
+          </a>
+        </div>
       <div class="hero-image">
-        <img
-          src="images/placeholder.svg"
-          alt="Camisetas Subli.me"
-        >
+        <div class="hero-carousel">
+          <div class="hero-carousel-track" id="hero-carousel-track">
+            <img src="images/placeholder.svg" alt="Camisetas Subli.me" class="hero-carousel-slide">
+          </div>
+          <div class="hero-carousel-dots" id="hero-carousel-dots"></div>
       </div>
-    </div>
 
     <!-- About -->
     <div class="about-section">
@@ -95,7 +105,6 @@
             💬 WhatsApp
           </a>
         </div>
-      </div>
     </div>
   </section>
 
@@ -123,16 +132,13 @@
 
     <!-- Panel -->
     <div class="admin-panel">
-      <!-- Logged in info -->
       <div class="admin-header">
         <p>👤 Conectado como <strong id="admin-email-display"></strong></p>
         <div style="display:flex;gap:8px;">
-          <button id="sync-btn" class="btn btn-outline" style="padding:8px 16px;font-size:0.85rem;" title="Recarregar produtos do banco">🔄 Sincronizar</button>
+          <button id="sync-btn" class="btn btn-outline" style="padding:8px 16px;font-size:0.85rem;">🔄 Sincronizar</button>
           <button id="admin-logout-btn" class="btn btn-outline" style="padding:8px 20px;font-size:0.85rem;">Sair</button>
         </div>
-      </div>
 
-      <!-- Add product form -->
       <div class="admin-form">
         <h3>➕ Adicionar Novo Produto</h3>
         <form id="admin-form">
@@ -150,7 +156,6 @@
             </div>
             <p class="upload-hint">Selecione várias imagens de uma vez (frente, verso, lateral, etc.)</p>
             <div id="previews-container"><p style="color:#999;font-size:0.85rem;margin-top:8px;">Nenhuma imagem selecionada</p></div>
-          </div>
 
           <div class="form-group">
             <label for="prod-imagem-url">OU URL da Imagem (para links externos)</label>
@@ -185,11 +190,9 @@
         </form>
       </div>
 
-      <!-- Products list -->
       <div class="admin-products-list">
         <h3>📦 Produtos Cadastrados</h3>
         <div class="products-list"></div>
-      </div>
     </div>
   </section>
 
@@ -198,7 +201,6 @@
     <div class="modal">
       <button class="modal-close">✕</button>
       <div class="modal-content"></div>
-    </div>
   </div>
 
   <!-- ===== FOOTER ===== -->
@@ -215,4 +217,3 @@
   <script src="js/script.js"></script>
 </body>
 </html>
-
