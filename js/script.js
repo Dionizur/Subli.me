@@ -463,14 +463,14 @@ if (wFloat) wFloat.onclick = () => window.open('https://wa.me/' + CONFIG.whatsap
 
 // ===== INIT =====
 async function init() {
-  if (initSupabase()) {
-    await loadProducts();
-    showToast('Conectado!', 'success');
+  const connected = initSupabase();
+  if (connected) {
+    showToast('Conectado ao Supabase!', 'success');
   } else {
-    // Even without DB, show empty carousel
-    initHeroCarousel();
-    showToast('Configure o Supabase.', 'warning');
+    showToast('Usando dados locais (offline)', 'info');
   }
+  // SEMPRE carrega produtos - fetchProducts() tem fallback local
+  await loadProducts();
   navigateTo('home');
 }
 
