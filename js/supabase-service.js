@@ -132,45 +132,33 @@ async function removeProduct(id) {
 
 async function authenticateAdmin(email, password) {
   const client = getClient();
-  console.log('🔍 Buscando admin no banco:', `"${email}"`);
+  const login = (email || '').trim().toLowerCase();
+  const pass = (password || '').trim();
 
+  console.log('🔍 Buscando admin no banco:', `"${login}"`);
+
+  // COMPARAÇÃO SIMPLES: email exato + senha exata
   const { data, error } = await client
     .from('admins')
     .select('email, senha_hash, nome')
-    .eq('email', email)
+    .eq('email', login)
+    .eq('senha_hash', pass)
     .maybeSingle();
 
   if (error) {
-    console.error('❌ ERRO ao buscar admin:', error.message);
+    console.error('❌ ERRO ao autenticar admin:', error.message);
     console.error('   Código:', error.code);
     console.error('   Detalhes:', error.details);
-    console.error('   ⚠️ A tabela "admins" pode não existir!');
-    console.error('   → Execute o arquivo supabase-schema.sql no SQL Editor do Supabase');
     return null;
   }
 
   if (!data) {
-    console.warn(`⚠️ Admin "${email}" NÃO encontrado no banco.`);
-    console.warn('   → Execute o SQL: INSERT INTO admins (email, senha_hash, nome)');
-    console.warn("   → Valores: 'teste', 'MTIzNDU2', 'Admin Teste'");
-    console.warn('   → Ou use: email="teste" senha="123456"');
+    console.warn('⚠️ Usuário ou senha incorretos.');
     return null;
   }
 
-  console.log('✅ Admin encontrado:', data.email);
-
-  // Verifica senha
-  const hash = btoa(unescape(encodeURIComponent(password)));
-  console.log('   Hash no banco:', data.senha_hash);
-  console.log('   Hash gerado: ', hash);
-
-  if (hash === data.senha_hash) {
-    console.log('✅ Senha correta! Login autorizado.');
-    return { email: data.email, nome: data.nome || 'Admin' };
-  }
-
-  console.warn('⚠️ Senha incorreta.');
-  return null;
+  console.log('✅ Login autorizado.');
+  return { email: data.email, nome: data.nome || 'Admin' };
 }
 
 // ===== NORMALIZAÇÃO =====

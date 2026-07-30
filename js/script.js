@@ -28,6 +28,7 @@ const adminLoginDiv = $('.admin-login');
 const adminPanel = $('.admin-panel');
 const adminEmailInput = $('#admin-email');
 const adminPasswordInput = $('#admin-password');
+const normalizeLoginValue = (v) => (v || '').trim().toLowerCase();
 const adminLoginBtn = $('#admin-login-btn');
 const adminLoginError = $('#admin-login-error');
 const adminEmailDisplay = $('#admin-email-display');
@@ -215,7 +216,17 @@ function renderProducts() {
   }
   productsGrid.innerHTML = products.map(function(p) {
     const img = getImageSrc(getProductImages(p)[0]);
-    return '<div class="product-card" data-id="' + p.id + '"><div class="product-card-image"><img src="' + img + '" alt="' + p.nome + '" loading="lazy" onerror="this.src=' + "'" + CONFIG.placeholder + "'" + '"></div><div class="product-info"><div class="categoria">' + (p.categoria || 'Geral') + '</div><h3>' + p.nome + '</h3><div class="preco">R$ ' + parseFloat(p.preco).toFixed(2) + '</div><div class="tamanhos-mini">' + (p.tamanhos || []).map(function(t) { return '<span>' + t + '</span>'; }).join('') + '</div>';
+    return '<div class="product-card" data-id="' + p.id + '">' +
+      '<div class="product-card-image">' +
+      '<img src="' + img + '" alt="' + p.nome + '" loading="lazy" onerror="this.src=' + "'" + CONFIG.placeholder + "'" + '">' +
+      '</div>' +
+      '<div class="product-info">' +
+      '<div class="categoria">' + (p.categoria || 'Geral') + '</div>' +
+      '<h3>' + p.nome + '</h3>' +
+      '<div class="preco">R$ ' + parseFloat(p.preco).toFixed(2) + '</div>' +
+      '<div class="tamanhos-mini">' + (p.tamanhos || []).map(function(t) { return '<span>' + t + '</span>'; }).join('') + '</div>' +
+      '</div>' +
+      '</div>';
   }).join('');
   $$('.product-card').forEach(function(card) {
     card.addEventListener('click', function() {
@@ -279,8 +290,8 @@ document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close
 // ===== LOGIN ADMIN =====
 if (adminLoginBtn) {
   adminLoginBtn.onclick = async function() {
-    const email = adminEmailInput.value.trim();
-    const password = adminPasswordInput.value.trim();
+    const email = normalizeLoginValue(adminEmailInput.value);
+    const password = (adminPasswordInput.value || '').trim();
     if (!email || !password) {
       adminLoginError.textContent = 'Preencha usuario e senha!';
       adminLoginError.style.display = 'block';
