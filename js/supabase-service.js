@@ -110,20 +110,20 @@ async function addProduct(product) {
 
 async function removeProduct(id) {
   const client = getClient();
-  console.log('🗑️ Removendo produto ID:', id);
+  console.log('🗑️ Excluindo produto do banco. ID:', id);
   const { error } = await client
     .from('products')
-    .update({ ativo: false })
+    .delete()
     .eq('id', id);
 
   if (error) {
-    console.error('❌ ERRO ao remover produto:', error.message);
+    console.error('❌ ERRO ao excluir produto:', error.message);
     console.error('   Código:', error.code);
     console.error('   Detalhes:', error.details);
     return false;
   }
 
-  console.log('✅ Produto removido (soft delete) ID:', id);
+  console.log('✅ Produto excluído do banco. ID:', id);
   return true;
 }
 

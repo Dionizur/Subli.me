@@ -31,11 +31,14 @@ CREATE TABLE IF NOT EXISTS admins (
 );
 
 -- ===== INSERT ADMIN PADRÃO =====
+-- Login simples (sem hash): compara email e senha exatamente como digitados
 -- Email: teste
--- Senha: 123456 (hash base64: MTIzNDU2)
+-- Senha: 123
 INSERT INTO admins (email, senha_hash, nome)
-VALUES ('teste', 'MTIzNDU2', 'Admin Teste')
-ON CONFLICT (email) DO NOTHING;
+VALUES ('teste', '123', 'Admin Teste')
+ON CONFLICT (email) DO UPDATE
+SET senha_hash = EXCLUDED.senha_hash,
+    nome = EXCLUDED.nome;
 
 -- ===== INSERT PRODUTOS INICIAIS =====
 INSERT INTO products (nome, descricao, preco, categoria, tamanhos, imagens) VALUES
