@@ -59,10 +59,22 @@ async function testarConexao() {
 async function fetchProducts() {
   const client = getClient();
   console.log('🔍 Buscando produtos no banco...');
+
+  // Limpeza automática: remove do banco tudo que estiver inativo (ativo = false)
+  const { error: cleanupError } = await client
+    .from('products')
+    .delete()
+    .eq('ativo', false);
+
+  if (cleanupError) {
+    console.error('⚠️ ERRO ao limpar produtos inativos:', cleanupError.message);
+    console.error('   Código:', cleanupError.code);
+    console.error('   Detalhes:', cleanupError.details);
+  }
+
   const { data, error } = await client
     .from('products')
     .select('*')
-    .eq('ativo', true)
     .order('created_at', { ascending: true });
 
   if (error) {
@@ -75,13 +87,15 @@ async function fetchProducts() {
     return [];
   }
 
-  if (!data || data.length === 0) {
-    console.log('⚠️ Tabela products está vazia — nenhum produto encontrado.');
+  const activeProducts = (data || []).filter((p) => p.ativo !== false);
+
+  if (activeProducts.length === 0) {
+    console.log('⚠️ Nenhum produto ativo encontrado no banco.');
     return [];
   }
 
-  console.log('✅ Produtos carregados do banco:', data.length);
-  return data.map(normalizeProduct);
+  console.log('✅ Produtos ativos carregados do banco:', activeProducts.length);
+  return activeProducts.map(normalizeProduct);
 }
 
 async function addProduct(product) {
