@@ -203,6 +203,7 @@ async function loadProducts() {
   showToast('Carregando produtos...', 'info');
   const data = await fetchProducts();
   products = (data && data.length > 0) ? data : [];
+  document.dispatchEvent(new Event('products-updated'));
   renderProducts();
   renderAdminProducts();
   initHeroCarousel();
@@ -211,7 +212,7 @@ async function loadProducts() {
 function renderProducts() {
   if (!productsGrid) return;
   if (products.length === 0) {
-    productsGrid.innerHTML = '<div style="text-align:center;padding:60px 0;color:#999;"><p style="font-size:3rem;">👕</p><p>Nenhum produto disponivel no banco de dados.</p><p style="font-size:0.85rem;color:#bbb;margin-top:8px;">Va em Admin e adicione produtos.</p></div>';
+    productsGrid.innerHTML = '<div style="text-align:center;padding:60px 0;color:#999;"><p style="font-size:3rem;">👕</p><p>Nenhum produto disponível no momento.</p><p style="font-size:0.85rem;color:#bbb;margin-top:8px;">Novidades em breve.</p></div>';
     return;
   }
   productsGrid.innerHTML = products.map(function(p) {
@@ -271,7 +272,8 @@ function openModal(product) {
       closeModal();
       navigateTo('order');
       document.getElementById('order-notes').value = 'Produto do catálogo: ' + product.nome + (selectedSize ? ' · Tamanho desejado: ' + selectedSize : '');
-      document.getElementById('order-fabric').focus();
+      document.dispatchEvent(new CustomEvent('order-select-product', { detail: product.id }));
+      document.getElementById('order-product').focus();
     };
   }
 
@@ -320,7 +322,7 @@ if (adminLoginBtn) {
         adminPasswordInput.focus();
       }
     } catch (err) {
-      adminLoginError.textContent = 'Erro ao autenticar. Verifique o console (F12).';
+      adminLoginError.textContent = err.message || 'Não foi possível entrar. Tente novamente.';
       adminLoginError.style.display = 'block';
     } finally {
       adminLoginBtn.textContent = 'Entrar';
@@ -338,6 +340,8 @@ if (adminLogoutBtn) {
     isLoggedIn = false;
     sessionUser = null;
     document.dispatchEvent(new Event('admin-logout'));
+    resetProductForm();
+    adminProductsList.replaceChildren();
     adminPanel.classList.remove('show');
     adminLoginDiv.style.display = 'block';
     adminLoginError.style.display = 'none';
@@ -349,6 +353,7 @@ if (adminLogoutBtn) {
 
 // ===== IMAGEM UPLOAD =====
 let pendingImages = [];
+let editingProductId = null;
 const fileInput = document.getElementById('prod-imagem-file');
 const previewContainer = document.getElementById('previews-container');
 const imagemUrlInput = document.getElementById('prod-imagem-url');
@@ -384,9 +389,11 @@ if (adminForm) {
     const preco = parseFloat(document.getElementById('prod-preco').value);
     const categoria = document.getElementById('prod-categoria').value;
     const tamanhosRaw = document.getElementById('prod-tamanhos').value.trim();
+    const cores = [...new Set(document.getElementById('prod-cores').value.split(',').map(c => c.trim()).filter(Boolean))];
     const urlImagem = imagemUrlInput ? imagemUrlInput.value.trim() : '';
 
-    if (!nome || !descricao || isNaN(preco) || !tamanhosRaw) {
+    if (!isLoggedIn) return;
+    if (!nome || !descricao || !Number.isFinite(preco) || preco < 0 || !tamanhosRaw || !cores.length) {
       showToast('Preencha todos os campos!', 'warning');
       return;
     }
@@ -396,41 +403,63 @@ if (adminForm) {
     let imagens = [];
     if (pendingImages.length > 0) imagens = pendingImages.map(function(img) { return img.dataURL; });
     else if (urlImagem) imagens = [urlImagem];
-    else imagens = [CONFIG.placeholder];
+    else { showToast('Adicione ao menos uma foto do produto.', 'warning'); return; }
 
     const btn = adminForm.querySelector('button[type="submit"]');
-    const orig = btn.textContent;
     btn.textContent = 'Salvando...';
     btn.disabled = true;
 
-    const result = await addProduct({ nome: nome, descricao: descricao, preco: preco, categoria: categoria, tamanhos: tamanhos, imagens: imagens, ativo: true });
+    const payload = {nome, descricao, preco, categoria, tamanhos, cores, imagens, ativo: true};
+    const result = editingProductId ? await updateProduct(editingProductId, payload) : await addProduct(payload);
     if (result) {
+      products = products.filter(p => p.id !== result.id);
       products.push(result);
+      document.dispatchEvent(new Event('products-updated'));
       renderProducts();
       renderAdminProducts();
       showToast('Produto adicionado ao banco!', 'success');
-      adminForm.reset();
-      pendingImages = [];
-      updatePreviews();
+      resetProductForm();
     } else {
       showToast('Erro ao salvar no banco.', 'error');
     }
-    btn.textContent = orig;
+    btn.textContent = editingProductId ? 'Salvar alterações' : 'Adicionar Produto';
     btn.disabled = false;
   };
 }
 
+function resetProductForm() {
+  editingProductId = null; adminForm.reset(); pendingImages = []; updatePreviews();
+  $('#product-form-title').textContent = '➕ Adicionar Novo Produto';
+  $('#cancel-product-edit').hidden = true;
+  adminForm.querySelector('button[type="submit"]').textContent = 'Adicionar Produto';
+}
+function editProduct(id) {
+  if (!isLoggedIn) return;
+  const p = products.find(p => p.id === id); if (!p) return;
+  editingProductId = id;
+  for (const [field, value] of Object.entries({nome:p.nome,descricao:p.descricao,preco:p.preco,categoria:p.categoria,tamanhos:(p.tamanhos || []).join(', '),cores:(p.cores || []).join(', ')})) {
+    document.getElementById('prod-' + field).value = value;
+  }
+  pendingImages = getProductImages(p).filter(src => src !== CONFIG.placeholder).map((src,i) => ({name:'Foto ' + (i+1),dataURL:src}));
+  updatePreviews(); $('#product-form-title').textContent = 'Editar produto';
+  $('#cancel-product-edit').hidden = false;
+  adminForm.querySelector('button[type="submit"]').textContent = 'Salvar alterações';
+  $('#prod-nome').focus();
+}
+$('#cancel-product-edit').onclick = resetProductForm;
+
 // ===== LISTAR E REMOVER =====
 function renderAdminProducts() {
-  if (!adminProductsList) return;
+  if (!adminProductsList || !isLoggedIn) return;
   if (products.length === 0) {
     adminProductsList.innerHTML = '<p style="color:#999;">Nenhum produto cadastrado no banco.</p>';
     return;
   }
   adminProductsList.innerHTML = products.map(function(p) {
     const img = getImageSrc(getProductImages(p)[0]);
-    return '<div class="admin-product-item"><img src="' + img + '" alt="' + p.nome + '" onerror="this.src=' + "'" + CONFIG.placeholder + "'" + '"><div class="info"><h4>' + p.nome + '</h4><p>' + (p.categoria || 'Geral') + ' - R$ ' + parseFloat(p.preco).toFixed(2) + '</p></div><button class="btn-remove" data-id="' + p.id + '">X Remover</button></div>';
+    return '<div class="admin-product-item"><img src="' + img + '" alt="' + p.nome + '" onerror="this.src=' + "'" + CONFIG.placeholder + "'" + '"><div class="info"><h4>' + p.nome + '</h4><p>' + (p.categoria || 'Geral') + ' - R$ ' + parseFloat(p.preco).toFixed(2) + '</p></div><button class="btn btn-outline btn-edit-product" data-id="' + p.id + '">Editar</button><button class="btn-remove" data-id="' + p.id + '">X Remover</button></div>';
   }).join('');
+  $$('.btn-edit-product').forEach(btn => { btn.onclick = () => editProduct(btn.dataset.id); });
   $$('.btn-remove').forEach(function(btn) {
     btn.onclick = async function() {
       if (!confirm('Remover este produto do banco?')) return;
@@ -438,6 +467,8 @@ function renderAdminProducts() {
       btn.disabled = true;
       if (await removeProduct(btn.dataset.id)) {
         products = products.filter(function(p) { return p.id !== btn.dataset.id; });
+        document.dispatchEvent(new Event('products-updated'));
+        if (editingProductId === btn.dataset.id) resetProductForm();
         renderProducts();
         renderAdminProducts();
         showToast('Produto removido do banco!', 'success');
@@ -468,6 +499,18 @@ async function init() {
   }
   showToast('Conectado ao Supabase!', 'success');
   await loadProducts();
+  try {
+    const { data: { session } } = await getClient().auth.getSession();
+    if (session) {
+      const { data: allowed } = await getClient().rpc('is_admin');
+      if (allowed) {
+        isLoggedIn = true; sessionUser = {email:session.user.email};
+        adminEmailDisplay.textContent = session.user.email;
+        adminPanel.classList.add('show'); adminLoginDiv.style.display = 'none';
+        renderAdminProducts(); document.dispatchEvent(new Event('admin-login'));
+      }
+    }
+  } catch (err) { console.error('Sessão não restaurada:', err.message); }
   navigateTo('home');
 }
 

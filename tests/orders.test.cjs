@@ -21,11 +21,10 @@ function setup() {
   const client = {rpc: async (name,args) => {calls.push({name,args});return {data:'order-uuid',error:null};},
     auth:{onAuthStateChange(fn) {this.callback=fn;}},
     from() {return {select() {return {order:async()=>({data:[],error:null})};}};}};
-  const context = {document:{getElementById:node,addEventListener:(name,fn)=>events.set(name,fn)},
+  const context = {products:[{id:'produto-1',nome:'Camiseta personalizada',categoria:'Unissex',preco:69.3,cores:['Preta','Branca'],tamanhos:['P','M'],ativo:true}],document:{getElementById:node,addEventListener:(name,fn)=>events.set(name,fn)},
     crypto: {randomUUID:()=> 'request-uuid'},getClient:()=>client,_supabase:client,isLoggedIn:false,sessionUser:null,
     adminPanel:node('panel'),adminLoginDiv:node('login')};
   vm.createContext(context);
-  vm.runInContext(fs.readFileSync('js/order-options.js','utf8'),context);
   vm.runInContext(fs.readFileSync('js/orders.js','utf8'),context);
   node('order-print').value='8 × 8 cm'; node('order-quantity').value='1';
   node('order-delivery').value='Retirada agendada';node('order-payment').value='Pix';
@@ -33,12 +32,10 @@ function setup() {
     add(qty) {node('order-color').value='Preta';node('order-quantity').value=String(qty);node('add-order-item').onclick();},
     async submit() {node('order-name').value='Cliente de teste';node('order-phone').value='(41) 99999-9999';await node('order-form').onsubmit({preventDefault(){}});}};
 }
-test('32 opções, preços e tamanhos iguais entre catálogo JS, JSON e SQL',()=>{
-  const ctx={};vm.createContext(ctx);vm.runInContext(fs.readFileSync('js/order-options.js','utf8')+';options=ORDER_OPTIONS',ctx);
-  const items=JSON.parse(JSON.stringify(ctx.options));assert.equal(items.length,32);
-  assert.deepEqual(items,JSON.parse(fs.readFileSync('data/order-options.json','utf8')));
-  const sql=fs.readFileSync('supabase-orders.sql','utf8');
-  for(const i of items) assert.ok(sql.includes(`('${i.id}','${i.tecido}','${i.modelo}',${i.preco},ARRAY[${i.tamanhos.map(t=>`'${t}'`).join(',')}])`));
+test('catálogo vazio não permite adicionar pedidos',()=>{
+ const t=setup(); t.context.products=[]; t.events.get('products-updated')();
+ assert.equal(t.node('add-order-item').disabled,true);
+ t.add(1); assert.match(t.node('order-total').textContent,/0 peça/);
 });
 test('10 peças sem desconto; 11 peças com desconto de 18%',()=>{
   const t=setup();t.add(10);assert.match(t.node('order-total').textContent,/693,00/);assert.doesNotMatch(t.node('order-total').textContent,/Desconto/);
@@ -48,12 +45,13 @@ test('recusa quantidade fracionada, negativa e acima do limite',()=>{
   for(const qty of [1.5,-1,501]) {const t=setup();t.add(qty);assert.match(t.node('order-total').textContent,/0 peça/);}
   const t=setup();t.add(500);t.add(1);assert.match(t.node('order-total').textContent,/500 peça/);
 });
-test('troca de tecido atualiza modelos, tamanhos e trava cor das peças brancas',()=>{
-  const t=setup();t.node('order-fabric').value='Infantil';t.node('order-fabric').onchange();assert.equal(t.node('order-size').value,'1');
-  t.node('order-fabric').value='Poliéster';t.node('order-fabric').onchange();assert.equal(t.node('order-color').value,'Branca');assert.equal(t.node('order-color').readOnly,true);
+test('cores e tamanhos acompanham as opções definidas no produto',()=>{
+ const t=setup(); t.context.products[0].cores=['Azul']; t.context.products[0].tamanhos=['GG'];
+ t.events.get('products-updated')(); assert.equal(t.node('order-color').value,'Azul'); assert.equal(t.node('order-size').value,'GG');
+ t.add(1); assert.match(t.node('order-total').textContent,/0 peça/);
 });
 test('envia somente escolhas; preço e total são calculados pelo banco',async()=>{
-  const t=setup();t.add(2);await t.submit();assert.equal(t.calls.length,1);assert.equal(t.calls[0].name,'submit_order');
+  const t=setup();t.add(2);await t.submit();assert.equal(t.calls.length,1);assert.equal(t.calls[0].name,'submit_product_order');
   const p=t.calls[0].args.payload;assert.equal(p.phone,'41999999999');assert.equal(p.items[0].quantity,2);assert.equal(p.items[0].unit_price,undefined);assert.equal(p.total,undefined);
   assert.match(t.node('order-feedback').textContent,/Pedido registrado/);assert.match(t.node('order-total').textContent,/0 peça/);
 });
@@ -75,7 +73,11 @@ test('logout limpa dados e resposta atrasada não repopula painel',async()=>{
   release({data:[{customer_name:'Privado'}],error:null});await loading;
   assert.equal(t.node('orders-list').innerHTML,'');assert.equal(t.node('order-metrics').innerHTML,'');assert.equal(t.context.isLoggedIn,false);
 });
-test('saída HTML escapa observações de itens',()=>{
- const t=setup();t.node('order-color').value='<img src=x onerror=alert(1)>';t.node('add-order-item').onclick();
+test('nomes de produtos são escapados ao renderizar o carrinho',()=>{
+ const t=setup();t.context.products[0].nome='<img src=x onerror=alert(1)>';t.add(1);
  assert.ok(t.node('order-cart').innerHTML.includes('&lt;img'));assert.ok(!t.node('order-cart').innerHTML.includes('<img'));
+});
+test('produto removido do catálogo é removido do carrinho',()=>{
+ const t=setup();t.add(2);t.context.products=[];t.events.get('products-updated')();
+ assert.match(t.node('order-total').textContent,/0 peça/);
 });

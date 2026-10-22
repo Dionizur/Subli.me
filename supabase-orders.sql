@@ -132,3 +132,59 @@ $$;
 revoke all on function public.submit_order(jsonb) from public;
 grant execute on function public.submit_order(jsonb) to anon, authenticated;
 commit;
+
+-- Catálogo cadastrado exclusivamente pelo administrador; fotos, tamanhos e cores por produto.
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS cores text[] NOT NULL DEFAULT '{}';
+UPDATE public.products SET ativo=false
+WHERE id IN (SELECT md5('sublime-'||id)::uuid FROM public.order_options)
+AND descricao='Peça personalizada com estampa em DTF. Consulte medidas e cores no guia. Orçamento e arte sujeitos à confirmação.'
+AND imagens=ARRAY['images/placeholder.svg'];
+DROP POLICY IF EXISTS "Produtos visíveis para todos" ON public.products;
+CREATE POLICY "Produtos visíveis para todos" ON public.products FOR SELECT USING (ativo=true OR public.is_admin());
+REVOKE ALL ON FUNCTION public.submit_order(jsonb) FROM anon, authenticated;
+create or replace function public.submit_product_order(payload jsonb) returns uuid language plpgsql security definer
+set search_path = public as $$
+declare
+ entry jsonb; opt public.products%rowtype; qty integer; count_pieces integer := 0;
+ subtotal_value numeric := 0; discount_value numeric := 0; saved_items jsonb := '[]';
+ order_id uuid; request_key uuid; name_value text; phone_value text;
+begin
+ request_key := (payload->>'request_id')::uuid;
+ if request_key is null then raise exception 'Identificador obrigatório'; end if;
+ name_value := trim(coalesce(payload->>'customer_name',''));
+ phone_value := regexp_replace(coalesce(payload->>'phone',''), '[^0-9]', '', 'g');
+ if length(name_value) not between 2 and 120 or length(phone_value) not between 10 and 15
+ or length(coalesce(payload->>'notes','')) > 2000
+ or coalesce(payload->>'delivery','') not in ('Retirada agendada','Uber Moto por conta do cliente')
+ or coalesce(payload->>'payment','') not in ('Pix','Cartão de crédito') then
+ raise exception 'Dados do pedido inválidos'; end if;
+ if jsonb_typeof(payload->'items') is distinct from 'array' then raise exception 'Itens inválidos'; end if;
+ if jsonb_array_length(payload->'items') not between 1 and 50 then raise exception 'Informe entre 1 e 50 itens'; end if;
+ for entry in select value from jsonb_array_elements(payload->'items') loop
+  select * into opt from public.products where id=(entry->>'product_id')::uuid and ativo = true;
+  if not found then raise exception 'Opção inválida'; end if;
+  if coalesce(entry->>'quantity','') !~ '^[0-9]{1,3}$' then raise exception 'Quantidade inválida'; end if;
+  qty := (entry->>'quantity')::integer;
+  if qty not between 1 and 500 or not coalesce((entry->>'size') = any(opt.tamanhos),false)
+   or length(trim(coalesce(entry->>'color',''))) not between 1 and 80
+   or coalesce(entry->>'print','') not in ('8 × 8 cm','30 × 30 cm','8 × 8 cm + 30 × 30 cm')
+   or not coalesce((entry->>'color') = any(opt.cores),false) then
+   raise exception 'Escolhas inválidas'; end if;
+  count_pieces := count_pieces + qty;
+  subtotal_value := subtotal_value + opt.preco * qty;
+  saved_items := saved_items || jsonb_build_array(jsonb_build_object(
+   'product_id',opt.id,'fabric',opt.categoria,'model',opt.nome,'size',entry->>'size',
+   'color',trim(entry->>'color'),'print',entry->>'print','quantity',qty,'unit_price',opt.preco));
+ end loop;
+ if count_pieces > 500 then raise exception 'Limite de 500 peças por pedido'; end if;
+ discount_value := case when count_pieces > 10 then round(subtotal_value * 0.18,2) else 0 end;
+ insert into public.orders(request_id,customer_name,phone,delivery,payment,notes,items,quantity,subtotal,discount,total)
+ values(request_key,name_value,phone_value,payload->>'delivery',payload->>'payment',coalesce(payload->>'notes',''),saved_items,count_pieces,subtotal_value,discount_value,subtotal_value-discount_value)
+ on conflict (request_id) do nothing returning id into order_id;
+ -- Reenvios recebem o mesmo código, sem expor os dados do pedido anterior.
+ if order_id is null then select id into order_id from public.orders where request_id=request_key; end if;
+ return order_id;
+end;
+$$;
+REVOKE ALL ON FUNCTION public.submit_product_order(jsonb) FROM public;
+GRANT EXECUTE ON FUNCTION public.submit_product_order(jsonb) TO anon, authenticated;

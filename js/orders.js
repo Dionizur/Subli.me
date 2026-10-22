@@ -5,21 +5,28 @@
   const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const statuses = ['Novo','Em aprovação','Em produção','Pronto','Entregue','Cancelado'];
   let cart = [], orders = [], generation = 0, submitting = false, requestId = null;
-  const fabric = el('order-fabric'), model = el('order-model'), size = el('order-size');
-  const option = () => ORDER_OPTIONS.find(o => o.id === model.value);
-  fabric.innerHTML = [...new Set(ORDER_OPTIONS.map(o => o.tecido))].map(v => `<option>${escape(v)}</option>`).join('');
-  function updateModels() {
-    model.innerHTML = ORDER_OPTIONS.filter(o => o.tecido === fabric.value).map(o => `<option value="${o.id}">${escape(o.modelo)}</option>`).join('');
-    updateSizes();
-  }
+  const productSelect = el('order-product'), size = el('order-size'), colorSelect = el('order-color');
+  const option = () => products.find(o => o.id === productSelect.value && o.ativo !== false);
   function updateSizes() {
     const selected = option();
-    size.innerHTML = selected.tamanhos.map(v => `<option>${escape(v)}</option>`).join('');
-    el('order-unit-price').textContent = `Preço de referência por peça: ${money(selected.preco)}`;
-    const white = selected.modelo.endsWith('branca');
-    el('order-color').readOnly = white;
-    el('order-color').value = white ? 'Branca' : '';
+    size.innerHTML = (selected?.tamanhos || []).map(v => `<option>${escape(v)}</option>`).join('');
+    colorSelect.innerHTML = (selected?.cores || []).map(v => `<option>${escape(v)}</option>`).join('');
+    const available = Boolean(selected && selected.tamanhos?.length && selected.cores?.length);
+    el('add-order-item').disabled = !available;
+    el('order-unit-price').textContent = available ? `Preço de referência por peça: ${money(selected.preco)}` : 'Nenhum produto disponível para encomenda no momento.';
   }
+  function updateProducts() {
+    const previous = productSelect.value;
+    productSelect.innerHTML = products.filter(p => p.ativo !== false && p.cores?.length && p.tamanhos?.length).map(p => `<option value="${escape(p.id)}">${escape(p.nome)}</option>`).join('');
+    if (products.some(p => p.id === previous && p.ativo !== false && p.cores?.length)) productSelect.value = previous;
+    // Mantém no carrinho apenas escolhas que continuam disponíveis.
+    cart = cart.filter(i => products.some(p => p.id === i.product_id && p.ativo !== false && p.cores?.includes(i.color) && p.tamanhos?.includes(i.size)));
+    updateSizes(); renderCart();
+  }
+  document.addEventListener('products-updated', updateProducts);
+  document.addEventListener('order-select-product', event => {
+    updateProducts(); productSelect.value = event.detail; updateSizes();
+  });
   function totals() {
     const quantity = cart.reduce((n,i) => n + i.quantity,0);
     const subtotal = cart.reduce((n,i) => n + i.quantity * Math.round(i.unit_price * 100),0);
@@ -32,15 +39,16 @@
     const t = totals();
     el('order-total').textContent = `${t.quantity} peça(s) · Estimativa: ${money(t.total/100)}${t.discount ? ` · Desconto de 18%: ${money(t.discount/100)}` : ''}`;
   }
-  fabric.onchange = updateModels; model.onchange = updateSizes;
+  productSelect.onchange = updateSizes;
   el('add-order-item').onclick = () => {
     if (submitting) return;
-    const qty = Number(el('order-quantity').value), color = el('order-color').value.trim();
+    const o = option();
+    const qty = Number(el('order-quantity').value), color = colorSelect.value;
+    if (!o || !o.cores?.includes(color) || !o.tamanhos?.includes(size.value)) { el('order-feedback').textContent = 'Escolha um produto, cor e tamanho disponíveis.'; return; }
     if (!Number.isInteger(qty) || qty < 1 || qty > 500 || totals().quantity + qty > 500 || !color || color.length > 80 || cart.length >= 50) {
       el('order-feedback').textContent = 'Informe a cor e uma quantidade inteira. Limite: 500 peças e 50 itens por pedido.'; return;
     }
-    const o = option();
-    cart.push({option_id:o.id,fabric:o.tecido,model:o.modelo,size:size.value,color,print:el('order-print').value,quantity:qty,unit_price:o.preco});
+    cart.push({product_id:o.id,fabric:o.categoria || 'Produto',model:o.nome,size:size.value,color,print:el('order-print').value,quantity:qty,unit_price:o.preco});
     el('order-feedback').textContent = ''; renderCart();
   };
   el('order-form').onsubmit = async event => {
@@ -53,14 +61,14 @@
     submitting = true;
     requestId ||= crypto.randomUUID();
     const controls = [...el('order-form').querySelectorAll('input,select,textarea,button')];
-    const payload = {request_id:requestId,customer_name:name,phone,delivery:el('order-delivery').value,payment:el('order-payment').value,notes:el('order-notes').value.trim(),items:cart.map(({option_id,size,color,print,quantity}) => ({option_id,size,color,print,quantity}))};
+    const payload = {request_id:requestId,customer_name:name,phone,delivery:el('order-delivery').value,payment:el('order-payment').value,notes:el('order-notes').value.trim(),items:cart.map(({product_id,size,color,print,quantity}) => ({product_id,size,color,print,quantity}))};
     controls.forEach(c => c.disabled = true);
     el('order-feedback').textContent = 'Registrando pedido...';
     try {
-      const {data,error} = await getClient().rpc('submit_order',{payload});
+      const {data,error} = await getClient().rpc('submit_product_order',{payload});
       if (error || !data) throw error || new Error('Sem confirmação');
       el('order-feedback').textContent = `Pedido registrado! Código: ${data}. Aguarde o contato da loja para confirmar a arte, as cores e o orçamento.`;
-      cart = []; requestId = null; renderCart(); el('order-form').reset(); updateModels();
+      cart = []; requestId = null; renderCart(); el('order-form').reset(); updateProducts();
     } catch (error) {
       el('order-feedback').textContent = 'Não foi possível confirmar o registro. As escolhas foram mantidas para tentar novamente sem duplicação. Se persistir, fale com a loja.';
     } finally {
@@ -123,5 +131,5 @@
       adminPanel.classList.remove('show'); adminLoginDiv.style.display = 'block';
     }
   });
-  updateModels(); renderCart();
+  updateProducts(); renderCart();
 })();
