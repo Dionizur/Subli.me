@@ -212,7 +212,7 @@ async function loadProducts() {
 function renderProducts() {
   if (!productsGrid) return;
   if (products.length === 0) {
-    productsGrid.innerHTML = '<div style="text-align:center;padding:60px 0;color:#999;"><p style="font-size:3rem;">👕</p><p>Nenhum produto disponivel no banco de dados.</p><p style="font-size:0.85rem;color:#bbb;margin-top:8px;">Va em Admin e adicione produtos.</p></div>';
+    productsGrid.innerHTML = '<div style="text-align:center;padding:60px 0;color:#999;"><p style="font-size:3rem;">👕</p><p>Nenhum produto disponível no momento.</p><p style="font-size:0.85rem;color:#bbb;margin-top:8px;">Novidades em breve.</p></div>';
     return;
   }
   productsGrid.innerHTML = products.map(function(p) {
@@ -406,7 +406,6 @@ if (adminForm) {
     else { showToast('Adicione ao menos uma foto do produto.', 'warning'); return; }
 
     const btn = adminForm.querySelector('button[type="submit"]');
-    const orig = btn.textContent;
     btn.textContent = 'Salvando...';
     btn.disabled = true;
 
