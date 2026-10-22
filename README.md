@@ -24,11 +24,11 @@ A criação da conta e a inclusão na lista de administradores são necessárias
 
 A aba Fazer pedido permite combinar peças de diferentes linhas/modelos, com tamanho, cor, estampa e quantidade, e registrar nome, WhatsApp, recebimento, pagamento e personalização. Encomendar no catálogo abre esse formulário com o produto anotado.
 
-As 32 opções e preços de referência foram transcritos do [Canva da loja](https://canva.link/9gsm1wiwk6t4fc0), consultado em 21/10/2026. O guia continua disponível no formulário para consultar medidas e cartelas. As cores são informadas pelo cliente conforme a cartela e confirmadas pela loja; não são uma lista de estoque. Manga longa premium usa a grade padrão como referência, sujeita à confirmação com a loja.
+O guia de referência contém 32 opções e preços que foram transcritos do [Canva da loja](https://canva.link/9gsm1wiwk6t4fc0), consultado em 21/10/2026. O guia continua disponível no formulário para consultar medidas e cartelas. As cores são informadas pelo cliente conforme a cartela e confirmadas pela loja; não são uma lista de estoque. Manga longa premium usa a grade padrão como referência, sujeita à confirmação com a loja.
 
 O desconto de 18% vale para mais de 10 peças (11 ou mais), somando os itens. O prazo informado é de 7 a 15 dias úteis após aprovação da arte. Retirada mediante agendamento ou Uber Moto com frete por conta do cliente. Os valores são estimativas: quantidade e tamanho de estampas podem alterar o orçamento final. Não há cobrança automática ou envio automático de mensagem.
 
-`submit_order` valida as opções e calcula preços, desconto e totais no banco. Visitantes podem registrar pedidos pela função, mas não consultar ou atualizar dados de clientes. Reenvios usam um identificador para evitar duplicação. As informações dos clientes não são salvas no armazenamento local do navegador.
+`submit_product_order` valida as opções e calcula preços, desconto e totais no banco. Visitantes podem registrar pedidos pela função, mas não consultar ou atualizar dados de clientes. Reenvios usam um identificador para evitar duplicação. As informações dos clientes não são salvas no armazenamento local do navegador.
 
 ## Dashboard
 
@@ -42,6 +42,6 @@ Execute `node --test tests/orders.test.cjs` e `node --check js/orders.js`. Os te
 
 ## Banco atual
 
-Conexão atualizada para o projeto Supabase `ppibnojdcoelryflpbwn` (sublime), usando somente a chave publicável. O catálogo inicial contém as 32 opções reais do Canva, com ilustração neutra até a administradora cadastrar as fotos. O banco antigo não foi alterado; não foi possível exportar seu conteúdo pela conexão disponível.
+Conexão atualizada para o projeto Supabase `ppibnojdcoelryflpbwn` (sublime), usando somente a chave publicável. O catálogo começa vazio. Produtos ilustrativos previamente criados foram desativados; o administrador cadastra nome, descrição, preço, fotos, cores e tamanhos, e pode editar as opções depois. As encomendas usam exclusivamente os produtos ativos e validam suas cores e tamanhos no banco. O banco antigo não foi alterado; não foi possível exportar seu conteúdo pela conexão disponível.
 
-O email indicado para administração é `lianbraiammendes@gmail.com`. A conta ainda precisa ser criada em Authentication e associada a `admin_users`; nunca grave a senha no código ou em SQL versionado.
+O email indicado para administração é `lianbraiammendes@gmail.com`. A conta precisa estar associada a `admin_users`; nunca grave a senha no código ou em SQL versionado.
