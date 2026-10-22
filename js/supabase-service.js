@@ -60,18 +60,6 @@ async function fetchProducts() {
   const client = getClient();
   console.log('🔍 Buscando produtos no banco...');
 
-  // Limpeza automática: remove do banco tudo que estiver inativo (ativo = false)
-  const { error: cleanupError } = await client
-    .from('products')
-    .delete()
-    .eq('ativo', false);
-
-  if (cleanupError) {
-    console.error('⚠️ ERRO ao limpar produtos inativos:', cleanupError.message);
-    console.error('   Código:', cleanupError.code);
-    console.error('   Detalhes:', cleanupError.details);
-  }
-
   const { data, error } = await client
     .from('products')
     .select('*')
@@ -142,37 +130,18 @@ async function removeProduct(id) {
 }
 
 // ===== ADMIN / AUTENTICAÇÃO =====
-// SEM fallback local — autentica SOMENTE via banco
+// Supabase Auth + autorização no banco pela função is_admin.
 
 async function authenticateAdmin(email, password) {
   const client = getClient();
-  const login = (email || '').trim().toLowerCase();
-  const pass = (password || '').trim();
-
-  console.log('🔍 Buscando admin no banco:', `"${login}"`);
-
-  // COMPARAÇÃO SIMPLES: email exato + senha exata
-  const { data, error } = await client
-    .from('admins')
-    .select('email, senha_hash, nome')
-    .eq('email', login)
-    .eq('senha_hash', pass)
-    .maybeSingle();
-
-  if (error) {
-    console.error('❌ ERRO ao autenticar admin:', error.message);
-    console.error('   Código:', error.code);
-    console.error('   Detalhes:', error.details);
+  const { data, error } = await client.auth.signInWithPassword({ email: email.trim(), password });
+  if (error) return null;
+  const { data: allowed, error: roleError } = await client.rpc('is_admin');
+  if (roleError || !allowed) {
+    await client.auth.signOut();
     return null;
   }
-
-  if (!data) {
-    console.warn('⚠️ Usuário ou senha incorretos.');
-    return null;
-  }
-
-  console.log('✅ Login autorizado.');
-  return { email: data.email, nome: data.nome || 'Admin' };
+  return { email: data.user.email, nome: data.user.user_metadata?.nome || 'Admin' };
 }
 
 // ===== NORMALIZAÇÃO =====

@@ -268,8 +268,10 @@ function openModal(product) {
 
     const wBtn = $('#whats-btn-modal');
     if (wBtn) wBtn.onclick = function() {
-      const tam = selectedSize ? 'Tam: ' + selectedSize : 'Tam: a confirmar';
-      window.open('https://wa.me/' + CONFIG.whatsapp + '?text=' + encodeURIComponent('Ola! Quero a ' + product.nome + ' - R$ ' + parseFloat(product.preco).toFixed(2) + ' - ' + tam), '_blank');
+      closeModal();
+      navigateTo('order');
+      document.getElementById('order-notes').value = 'Produto do catálogo: ' + product.nome + (selectedSize ? ' · Tamanho desejado: ' + selectedSize : '');
+      document.getElementById('order-fabric').focus();
     };
   }
 
@@ -291,7 +293,7 @@ document.addEventListener('keydown', function(e) { if (e.key === 'Escape') close
 if (adminLoginBtn) {
   adminLoginBtn.onclick = async function() {
     const email = normalizeLoginValue(adminEmailInput.value);
-    const password = (adminPasswordInput.value || '').trim();
+    const password = adminPasswordInput.value || '';
     if (!email || !password) {
       adminLoginError.textContent = 'Preencha usuario e senha!';
       adminLoginError.style.display = 'block';
@@ -309,6 +311,7 @@ if (adminLoginBtn) {
         adminEmailDisplay.textContent = user.email;
         adminPanel.classList.add('show');
         renderAdminProducts();
+        document.dispatchEvent(new Event('admin-login'));
         showToast('Bem-vindo, ' + (user.nome || user.email) + '!', 'success');
       } else {
         adminLoginError.textContent = 'Usuario ou senha incorretos!';
@@ -330,9 +333,11 @@ if (adminPasswordInput) adminPasswordInput.onkeydown = function(e) { if (e.key =
 if (adminEmailInput) adminEmailInput.onkeydown = function(e) { if (e.key === 'Enter') adminPasswordInput.focus(); };
 
 if (adminLogoutBtn) {
-  adminLogoutBtn.onclick = function() {
+  adminLogoutBtn.onclick = async function() {
+    await getClient().auth.signOut();
     isLoggedIn = false;
     sessionUser = null;
+    document.dispatchEvent(new Event('admin-logout'));
     adminPanel.classList.remove('show');
     adminLoginDiv.style.display = 'block';
     adminLoginError.style.display = 'none';
