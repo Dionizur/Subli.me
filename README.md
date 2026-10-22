@@ -1,278 +1,47 @@
-# SUBLI.ME — Documentação Técnica (Versão Pública)
+# SUBLI.ME
 
-## 1. Visão Geral
+Catálogo público de camisetas, formulário de encomendas e painel administrativo com Supabase.
 
-O **SUBLI.ME** é uma aplicação web para vitrine e gestão de produtos (camisetas), com:
+## Executar
 
-- catálogo público de produtos;
-- painel administrativo para autenticação;
-- cadastro e remoção de produtos;
-- persistência de dados no **Supabase** (PostgreSQL + API).
+Configure `js/supabase-config.js` com a URL e a chave pública anon do projeto (nunca use a chave service role no navegador). Sirva os arquivos por HTTP, por exemplo com `python -m http.server 8080`.
 
-> Este README foi escrito para uso público e acadêmico.  
-> Nenhuma credencial real, chave de API ou identificador sensível é exposto aqui.
+## Banco e administradores
 
----
+- Projeto novo: execute `supabase-schema.sql` no SQL Editor do Supabase. Ele já inclui pedidos e políticas de acesso.
+- Banco existente: execute apenas `supabase-orders.sql`. A migração preserva produtos e bloqueia o antigo acesso público à tabela de senhas.
+- Em Authentication > Users, crie a conta da administradora com email e senha. Copie seu UUID e execute, substituindo o exemplo:
 
-## 2. Objetivo do Projeto
-
-Este projeto demonstra, de forma prática, conceitos de:
-
-- desenvolvimento frontend com JavaScript puro;
-- integração com Backend as a Service (Supabase);
-- modelagem de dados relacional;
-- operações CRUD;
-- autenticação simples para área administrativa;
-- documentação técnica de software.
-
----
-
-## 3. Arquitetura da Solução
-
-### 3.1 Camadas
-
-1. **Apresentação (UI)**
-   - `index.html`
-   - `css/style.css`
-   - `js/script.js`
-
-2. **Serviço de Dados**
-   - `js/supabase-service.js`
-   - Responsável por conectar no Supabase e executar operações de dados:
-     - buscar produtos;
-     - inserir produtos;
-     - remover produtos;
-     - autenticar administrador.
-
-3. **Configuração**
-   - `js/supabase-config.js`
-   - Armazena URL do projeto e chave pública (anon key) em ambiente de desenvolvimento.
-
-4. **Banco de Dados**
-   - `supabase-schema.sql`
-   - Define tabelas, políticas RLS e dados iniciais.
-
----
-
-## 4. Estrutura de Pastas
-
-```txt
-.
-├── index.html
-├── README.md
-├── supabase-schema.sql
-├── TODO.md
-├── css/
-│   └── style.css
-├── data/
-│   ├── admin.json
-│   └── products.json
-├── images/
-│   └── ...arquivos de imagem...
-└── js/
-    ├── script.js
-    ├── supabase-config.js
-    └── supabase-service.js
+```sql
+insert into public.admin_users (user_id)
+values ('UUID-DA-CONTA-EM-AUTHENTICATION')
+on conflict do nothing;
 ```
 
----
+A criação da conta e a inclusão na lista de administradores são necessárias. O antigo login de teste deixa de funcionar. A área Admin exige Supabase Auth e verifica a permissão no banco. Não basta alterar variáveis JavaScript para ler pedidos. A tabela `admin_users` não permite que visitantes se promovam a administrador. Para revogar o acesso, remova a associação no SQL Editor.
 
-## 5. Fluxo Funcional
+## Encomendas
 
-### 5.1 Catálogo Público
-- Ao iniciar, o sistema conecta no Supabase.
-- Busca produtos na tabela `products`.
-- Renderiza cards de produtos na interface.
-- Modal exibe detalhes, galeria e botão de encomenda via WhatsApp.
+A aba Fazer pedido permite combinar peças de diferentes linhas/modelos, com tamanho, cor, estampa e quantidade, e registrar nome, WhatsApp, recebimento, pagamento e personalização. Encomendar no catálogo abre esse formulário com o produto anotado.
 
-### 5.2 Login Administrativo
-- Usuário informa email/usuário e senha na seção Admin.
-- O frontend chama `authenticateAdmin(email, password)`.
-- O serviço consulta tabela `admins` e faz comparação simples:
-  - email exato;
-  - senha exata.
-- Se válido, exibe painel administrativo.
+As 32 opções e preços de referência foram transcritos do [Canva da loja](https://canva.link/9gsm1wiwk6t4fc0), consultado em 21/10/2026. O guia continua disponível no formulário para consultar medidas e cartelas. As cores são informadas pelo cliente conforme a cartela e confirmadas pela loja; não são uma lista de estoque. Manga longa premium usa a grade padrão como referência, sujeita à confirmação com a loja.
 
-### 5.3 Cadastro de Produto
-- Admin preenche formulário (nome, descrição, preço, categoria, tamanhos, imagens).
-- O sistema envia para `addProduct(...)`.
-- Produto é inserido no Supabase e refletido na interface.
+O desconto de 18% vale para mais de 10 peças (11 ou mais), somando os itens. O prazo informado é de 7 a 15 dias úteis após aprovação da arte. Retirada mediante agendamento ou Uber Moto com frete por conta do cliente. Os valores são estimativas: quantidade e tamanho de estampas podem alterar o orçamento final. Não há cobrança automática ou envio automático de mensagem.
 
-### 5.4 Remoção de Produto
-- O botão remover chama `removeProduct(id)`.
-- A remoção é **física** no banco (`DELETE`), não apenas lógica.
-- Produtos com `ativo = false` também são limpos no carregamento.
+`submit_order` valida as opções e calcula preços, desconto e totais no banco. Visitantes podem registrar pedidos pela função, mas não consultar ou atualizar dados de clientes. Reenvios usam um identificador para evitar duplicação. As informações dos clientes não são salvas no armazenamento local do navegador.
 
----
+## Dashboard
 
-## 6. Modelagem de Dados (Resumo)
+Após login como administradora, o painel mostra total de pedidos, pedidos em andamento, peças e valor estimado (excluindo cancelados), busca por cliente/telefone/código e filtro de status. Cada pedido detalha as escolhas e permite acompanhar Novo, Em aprovação, Em produção, Pronto, Entregue ou Cancelado. Atualizar pedidos recarrega os dados do banco. O painel limpa os dados ao sair da sessão.
 
-## 6.1 Tabela `products`
-Campos principais:
-- `id` (UUID, PK)
-- `created_at` (timestamp)
-- `nome` (texto)
-- `descricao` (texto)
-- `preco` (numérico)
-- `categoria` (texto)
-- `tamanhos` (array texto)
-- `imagens` (array texto)
-- `ativo` (boolean)
+Os scripts SQL devem ser aplicados antes de usar as novas funções. O código local não executa migrações remotamente. Mantenha as políticas RLS ativas. Para publicação com tráfego elevado, adicione proteção contra abuso/rate limiting ao endpoint público de pedidos.
 
-## 6.2 Tabela `admins`
-Campos principais:
-- `id` (UUID, PK)
-- `created_at` (timestamp)
-- `email` (texto único)
-- `senha_hash` (texto)  
-- `nome` (texto)
+## Validação
 
-> Observação acadêmica: o campo `senha_hash` está sendo usado em comparação simples no cenário atual do projeto.
+Execute `node --test tests/orders.test.cjs` e `node --check js/orders.js`. Os testes locais cobrem seleção/carrinho, desconto no limite de 10/11 peças, validação, envio, reenvio e limpeza de dados privados. A validação real de RLS exige aplicar a migração em um projeto Supabase de teste e verificar visitantes, conta comum, administradora e administradora revogada.
 
----
+## Banco atual
 
-## 7. Segurança e Boas Práticas (Importante)
+Conexão atualizada para o projeto Supabase `ppibnojdcoelryflpbwn` (sublime), usando somente a chave publicável. O catálogo inicial contém as 32 opções reais do Canva, com ilustração neutra até a administradora cadastrar as fotos. O banco antigo não foi alterado; não foi possível exportar seu conteúdo pela conexão disponível.
 
-Mesmo sendo funcional para estudo, há pontos essenciais para produção:
-
-1. **Não expor credenciais reais**
-   - Nunca publicar `anonKey` real em repositório público.
-   - Usar variáveis de ambiente sempre que possível.
-
-2. **Senha de admin**
-   - Evitar comparação simples em produção.
-   - Usar hash seguro (ex.: bcrypt/argon2) + fluxo de autenticação robusto.
-
-3. **RLS (Row Level Security)**
-   - Revisar políticas para restringir operações sensíveis.
-   - Evitar permissões amplas de escrita/deleção para usuários anônimos.
-
-4. **Validação de entrada**
-   - Sanitizar e validar campos no frontend e backend.
-   - Implementar regras de integridade adicionais.
-
----
-
-## 8. Configuração do Ambiente (Setup)
-
-### 8.1 Pré-requisitos
-- Navegador moderno
-- Conta Supabase
-- Projeto Supabase criado
-
-### 8.2 Passo a Passo
-
-1. Clone/baixe o projeto.
-2. No Supabase, abra **SQL Editor** e execute `supabase-schema.sql`.
-3. Configure `js/supabase-config.js` com valores do seu projeto:
-   - `url`: URL do projeto Supabase
-   - `anonKey`: chave pública (anon)
-4. Abra o `index.html` (ou rode via servidor local simples).
-5. Teste o fluxo público e administrativo.
-
----
-
-## 9. Como Executar Localmente
-
-Como é um frontend estático, você pode:
-
-- abrir `index.html` diretamente; ou
-- usar um servidor local (recomendado para evitar restrições de navegador).
-
-Exemplo (VS Code + extensão Live Server):
-- clique em “Go Live” e abra a URL local.
-
----
-
-## 10. Pontos Técnicos Relevantes no Código
-
-### 10.1 `js/supabase-service.js`
-Responsável por:
-- `initSupabase()`: inicializa cliente;
-- `fetchProducts()`: busca produtos e normaliza dados;
-- `addProduct(product)`: insere produto;
-- `removeProduct(id)`: remove produto no banco com `DELETE`;
-- `authenticateAdmin(email, password)`: autenticação admin por comparação simples.
-
-### 10.2 `js/script.js`
-Responsável por:
-- renderização de UI;
-- navegação entre seções;
-- login/logout admin;
-- formulário de cadastro;
-- integração com funções do serviço Supabase.
-
-### 10.3 `supabase-schema.sql`
-Responsável por:
-- criação de tabelas;
-- seed inicial;
-- políticas RLS.
-
----
-
-## 11. Troubleshooting
-
-1. **“Supabase não foi inicializado”**
-   - Verifique `url` e `anonKey` em `js/supabase-config.js`.
-
-2. **Produtos não aparecem**
-   - Confirme execução de `supabase-schema.sql`.
-   - Verifique políticas RLS e erros no console (F12).
-
-3. **Erro ao autenticar admin**
-   - Confirme se o registro existe em `admins`.
-   - Verifique valores digitados e comparação esperada.
-
-4. **Produto não remove**
-   - Verifique política de `DELETE` na tabela `products`.
-   - Inspecione erro retornado no console do navegador.
-
----
-
-## 12. Limitações Atuais
-
-- autenticação administrativa simplificada;
-- ausência de backend próprio (lógica no cliente);
-- sem trilha de auditoria de operações;
-- sem testes automatizados (unitários/e2e).
-
----
-
-## 13. Melhorias Futuras (Roadmap)
-
-- autenticação com Supabase Auth;
-- hash de senha robusto (bcrypt/argon2);
-- painel com controle de perfil/permissões;
-- upload de imagens em bucket com URL assinada;
-- testes automatizados (unit + integração + e2e);
-- pipeline CI/CD;
-- observabilidade (logs estruturados e monitoramento).
-
----
-
-## 14. Uso Acadêmico
-
-Este projeto pode ser usado como estudo de caso para disciplinas como:
-
-- Engenharia de Software;
-- Banco de Dados;
-- Desenvolvimento Web;
-- Segurança da Informação (análise de riscos e melhorias);
-- Qualidade de Software e documentação técnica.
-
-Sugestão de abordagem em relatório:
-1. Contexto e problema;
-2. Arquitetura proposta;
-3. Modelagem de dados;
-4. Implementação;
-5. Resultados e limitações;
-6. Plano de evolução.
-
----
-
-## 15. Licença e Publicação
-
-Antes de publicar:
-- revise se não há credenciais reais em arquivos versionados;
-- substitua quaisquer URLs/chaves reais por placeholders;
-- valide políticas de segurança do banco.
+O email indicado para administração é `lianbraiammendes@gmail.com`. A conta ainda precisa ser criada em Authentication e associada a `admin_users`; nunca grave a senha no código ou em SQL versionado.

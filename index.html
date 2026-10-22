@@ -19,6 +19,7 @@
       <ul class="nav-links">
         <li><a href="#" data-section="home" class="active">Início</a></li>
         <li><a href="#" data-section="products">Produtos</a></li>
+        <li><a href="#" data-section="order">Fazer pedido</a></li>
         <li><a href="#" data-section="admin">Admin</a></li>
       </ul>
 
@@ -99,14 +100,34 @@
     <div class="products-grid"></div>
   </section>
 
+  <section id="order" class="section">
+    <h2 class="section-title">Seu propósito estampado</h2>
+    <p class="section-subtitle">Monte seu pedido de camisetas e moletons personalizados com estampa em DTF.</p>
+    <div class="order-layout">
+      <form id="order-form" class="order-card">
+        <h3>Escolha suas peças</h3>
+        <div class="order-fields"><label>Tecido / linha<select id="order-fabric" required></select></label><label>Modelo<select id="order-model" required></select></label><label>Tamanho<select id="order-size" required></select></label><label>Cor desejada<input id="order-color" maxlength="80" placeholder="Conforme a cartela do guia" required></label><label>Estampa<select id="order-print"><option>8 × 8 cm</option><option>30 × 30 cm</option><option>8 × 8 cm + 30 × 30 cm</option></select></label><label>Quantidade<input id="order-quantity" type="number" min="1" max="500" step="1" value="1" required></label></div>
+        <p id="order-unit-price"></p><button class="btn btn-outline" id="add-order-item" type="button">Adicionar ao pedido</button>
+        <div id="order-cart" aria-live="polite"></div>
+        <h3>Seus dados</h3>
+        <div class="order-fields"><label>Nome<input id="order-name" maxlength="120" autocomplete="name" required></label><label>WhatsApp com DDD<input id="order-phone" type="tel" maxlength="25" autocomplete="tel" required></label><label>Recebimento<select id="order-delivery"><option>Retirada agendada</option><option>Uber Moto por conta do cliente</option></select></label><label>Pagamento<select id="order-payment"><option>Pix</option><option>Cartão de crédito</option></select></label></div>
+        <label>Personalização e observações<textarea id="order-notes" maxlength="2000" placeholder="Descreva a arte e onde deseja a estampa"></textarea></label>
+        <p id="order-total" class="order-total"></p>
+        <button class="btn btn-primary" id="submit-order" type="submit">Registrar pedido</button>
+        <p id="order-feedback" role="status" aria-live="polite"></p>
+      </form>
+      <aside class="order-card order-guide"><h3>Como funciona</h3><p>Preços de referência para estampas de 8 × 8 cm e 30 × 30 cm. O valor pode variar conforme a quantidade e os tamanhos das estampas; a loja confirma o orçamento e a arte antes da produção.</p><p><strong>18% de desconto</strong> em pedidos acima de 10 peças.</p><p><strong>7 a 15 dias úteis</strong> após aprovação da arte.</p><p>Retirada mediante agendamento ou Uber Moto, com frete por conta do cliente.</p><a href="https://canva.link/9gsm1wiwk6t4fc0" target="_blank" rel="noopener noreferrer" class="btn btn-outline">Consultar medidas e cartela de cores</a><p>Informe a cor conforme o guia. A disponibilidade será confirmada pela loja.</p></aside>
+    </div>
+  </section>
+
   <section id="admin" class="section">
     <h2 class="section-title">🔐 Administração</h2>
-    <p class="section-subtitle">Gerencie os produtos da loja</p>
+    <p class="section-subtitle">Acompanhe os pedidos e gerencie os produtos da loja</p>
 
     <div class="admin-login">
       <h2>🔑 Acesso Restrito</h2>
       <p style="color:#888;margin-bottom:20px;font-size:0.9rem;">Faça login com suas credenciais de administrador</p>
-      <input type="text" id="admin-email" placeholder="Usuário" autocomplete="username">
+      <input type="text" id="admin-email" placeholder="Email de administrador" autocomplete="username">
       <input type="password" id="admin-password" placeholder="Senha" autocomplete="current-password">
       <button id="admin-login-btn" class="btn btn-primary" style="width:100%;">Entrar</button>
       <p id="admin-login-error" style="color:#e74c3c;margin-top:10px;font-size:0.85rem;display:none;">❌ Usuário ou senha incorretos!</p>
@@ -121,6 +142,12 @@
         </div>
       </div>
 
+      <div id="orders-dashboard" class="orders-dashboard" aria-label="Painel de pedidos">
+        <div class="orders-heading"><div><h3>Pedidos da loja</h3><p>Escolhas, quantidades e acompanhamento da produção.</p></div><button type="button" class="btn btn-outline" id="refresh-orders">Atualizar pedidos</button></div>
+        <div id="order-metrics" class="order-metrics"></div>
+        <div class="order-filters"><label>Buscar pedido ou cliente<input id="order-search" type="search" placeholder="Nome, telefone ou código"></label><label>Status<select id="order-status-filter"><option value="">Todos</option><option>Novo</option><option>Em aprovação</option><option>Em produção</option><option>Pronto</option><option>Entregue</option><option>Cancelado</option></select></label></div>
+        <p id="orders-feedback" role="status" aria-live="polite"></p><div id="orders-list"></div>
+      </div>
       <div class="admin-form">
         <h3>➕ Adicionar Novo Produto</h3>
         <form id="admin-form">
@@ -196,6 +223,8 @@
 
   <script src="js/supabase-config.js"></script>
   <script src="js/supabase-service.js"></script>
+  <script src="js/order-options.js"></script>
   <script src="js/script.js"></script>
+  <script src="js/orders.js"></script>
 </body>
 </html>
