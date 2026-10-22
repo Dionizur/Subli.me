@@ -115,7 +115,7 @@ async function removeProduct(id) {
   console.log('🗑️ Excluindo produto do banco. ID:', id);
   const { error } = await client
     .from('products')
-    .delete()
+    .update({ ativo: false })
     .eq('id', id);
 
   if (error) {
@@ -139,7 +139,7 @@ async function authenticateAdmin(email, password) {
   const { data: allowed, error: roleError } = await client.rpc('is_admin');
   if (roleError || !allowed) {
     await client.auth.signOut();
-    return null;
+    throw new Error('Sua conta ainda não tem permissão de administrador.');
   }
   return { email: data.user.email, nome: data.user.user_metadata?.nome || 'Admin' };
 }
@@ -157,4 +157,10 @@ function normalizeProduct(p) {
 
 function getPlaceholder() {
   return 'images/placeholder.svg';
+}
+
+async function updateProduct(id, product) {
+  const {data, error} = await getClient().from('products').update(product).eq('id',id).select().single();
+  if (error) return null;
+  return data;
 }
